@@ -15,6 +15,7 @@ export class DesktopControls {
 
 		this.drag = null;
 		this.pointerIsDown = false;
+		this.pointerDownAltKey = false;
 		this.modeState = {
 			mode: "Place",
 		};
@@ -109,6 +110,7 @@ export class DesktopControls {
 		}
 
 		this.pointerIsDown = true;
+		this.pointerDownAltKey = event.altKey;
 		this.updatePointer(event);
 		this.pointerDownClient.copy(this.pointerClient);
 		this.updateViewRay();
@@ -131,6 +133,10 @@ export class DesktopControls {
 
 		if (this.mode === "Edit") {
 			this.beginMaskEdit(event);
+		}
+
+		if (this.mode === "Segment" && event.altKey) {
+			this.beginScreenMove(event);
 		}
 
 		if (this.drag) {
@@ -206,10 +212,13 @@ export class DesktopControls {
 		} else if (
 			this.mode === "Segment" &&
 			event.button === 0 &&
+			!this.pointerDownAltKey &&
 			this.getPointerTravel() < 6
 		) {
 			this.handleSegmentClick();
 		}
+
+		this.pointerDownAltKey = false;
 	}
 
 	onDoubleClick(event) {
@@ -238,21 +247,27 @@ export class DesktopControls {
 		}
 
 		if (event.shiftKey && (this.mode === "Place" || this.mode === "Inspect")) {
-			event.preventDefault();
+			this.consumeWheelEvent(event);
 			this.scaleDisplay(event.deltaY);
 			return;
 		}
 
 		if (event.shiftKey && (this.mode === "Edit" || this.mode === "Segment")) {
-			event.preventDefault();
+			this.consumeWheelEvent(event);
 			this.resizeBrush(event.deltaY);
 			return;
 		}
 
 		if (event.altKey && this.mode === "Segment") {
-			event.preventDefault();
+			this.consumeWheelEvent(event);
 			this.moveSegmentSlice(event.deltaY);
+			return;
 		}
+	}
+
+	consumeWheelEvent(event) {
+		event.preventDefault();
+		event.stopPropagation();
 	}
 
 	beginDisplayMove() {
@@ -394,6 +409,12 @@ export class DesktopControls {
 		this.app.model.material.uniforms.uModelAlpha.value = 1.0;
 		this.app.model.material.uniforms.uModelAlphaClip.value = 0.4;
 		this.app.model.material.needsUpdate = true;
+
+		if (this.mode === "Segment") {
+			for (const worker of this.app.workers) {
+				this.app.workerManager.runEncode(worker.userData.id);
+			}
+		}
 	}
 
 	beginScreenRotation() {
@@ -546,24 +567,30 @@ export class DesktopControls {
 		const axis = 2;
 		const step =
 			Math.sign(deltaY) * this.app.mask.userData.voxelSize.getComponent(axis);
-		const halfExtent = this.app.mask.userData.size.getComponent(axis) * 0.5;
+		const position = this.app.screen.position.getComponent(axis);
+		this.setSegmentSlicePosition(axis, position + step);
+	}
 
-		this.app.screen.position.setComponent(
-			axis,
-			THREE.MathUtils.clamp(
-				this.app.screen.position.getComponent(axis) + step,
-				-halfExtent,
-				halfExtent,
-			),
+	setSegmentSlicePosition(axis, position) {
+		const halfExtent = this.app.mask.userData.size.getComponent(axis) * 0.5;
+		const nextPosition = THREE.MathUtils.clamp(
+			position,
+			-halfExtent,
+			halfExtent,
 		);
 
+		if (nextPosition === this.app.screen.position.getComponent(axis)) {
+			return false;
+		}
+
+		this.app.screen.position.setComponent(axis, nextPosition);
 		this.app.screen.updateMatrix();
-		this.app.screenManager.update();
-		this.app.screenManager.updateUniformsPlanes();
-		this.app.modelManager.updateUniformsPlanes();
+		this.app.displayManager.update();
 
 		for (const worker of this.app.workers) {
 			this.app.workerManager.runEncode(worker.userData.id);
 		}
+
+		return true;
 	}
 }
