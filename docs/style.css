@@ -1,0 +1,21 @@
+body {
+    font-family: "Lucida Console", monospace;
+    font-size: 15px;
+    line-height: 18px;
+    margin:0;
+    overflow: hidden;
+  }
+
+  #popup-window {
+    background: white;
+    border: 1px solid rgb(255 255 255);
+    display: none;
+    height: 80%;
+    inset: 0;
+    margin: auto;
+    overflow: auto; /* Enable scroll if needed */
+    padding: 10px;
+    position: fixed;
+    width: 80%;
+    z-index: 1;  /* Sit on top */
+  }        

@@ -1,0 +1,11 @@
+{
+	"name": "mpr-viewer",
+	"private": true,
+	"workspaces": [
+		"docs"
+	],
+	"scripts": {
+		"dev": "npm run dev --workspace mpr-viewer-docs",
+		"start": "npm run dev"
+	}
+}
