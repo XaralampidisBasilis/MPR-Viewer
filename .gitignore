@@ -3,6 +3,7 @@
 
 # ignore all directories with these names
 node_modules/
+dist/
 data/
 docs/tmp
 docs/prm/medSam/preprocessor_config.json

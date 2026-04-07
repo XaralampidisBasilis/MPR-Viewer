@@ -1,20 +1,11 @@
 import * as THREE from "three";
+import * as nifti from "nifti-reader-js";
 import { OBB } from "three/addons/math/OBB.js";
 import * as PIXPIPE from "../../prm/pixpipe.esmodule.js";
 
 export class AppUtils {
 	constructor(app) {
 		this.app = app;
-	}
-
-	async loadShader(url) {
-		const response = await fetch(url);
-
-		if (!response.ok) {
-			throw new Error(`Failed to load shader: ${response.url || url}`);
-		}
-
-		return await response.text();
 	}
 
 	loadNIFTI(file) {
@@ -57,11 +48,6 @@ export class AppUtils {
 		return new Promise((resolve, reject) => {
 			if (!file) {
 				reject(new Error("No file selected"));
-				return;
-			}
-
-			if (typeof nifti === "undefined") {
-				reject(new Error("NIFTI reader is not available in the current page"));
 				return;
 			}
 

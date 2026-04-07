@@ -1,11 +1,38 @@
 {
 	"name": "mpr-viewer",
 	"private": true,
-	"workspaces": [
-		"docs"
-	],
+	"version": "0.1.0",
+	"type": "module",
 	"scripts": {
-		"dev": "npm run dev --workspace mpr-viewer-docs",
-		"start": "npm run dev"
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@tensorflow/tfjs": "^4.21.0",
+		"lil-gui": "^0.19.2",
+		"nifti-reader-js": "^0.6.8",
+		"onnxruntime-web": "1.14.0",
+		"three": "^0.161.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.5.3",
+		"css-validator": "0.11.0",
+		"html-validate": "8.9.1",
+		"js-beautify": "1.14.11",
+		"sort-package-json": "2.7.0",
+		"stylelint": "16.2.1",
+		"stylelint-config-standard": "36.0.0",
+		"stylelint-order": "6.0.4",
+		"vite": "^5.4.19"
+	},
+	"stylelint": {
+		"extends": "stylelint-config-standard",
+		"plugins": [
+			"stylelint-order"
+		],
+		"rules": {
+			"order/properties-alphabetical-order": true
+		}
 	}
 }

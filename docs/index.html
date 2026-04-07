@@ -210,19 +210,9 @@
     <!-- lil-gui buttons -->
     <input type="file" id="volumeId" style="display:none">
     <input type="file" id="maskId" style="display:none">
-    <a id="volumeFile" class="filelinks" style="display:none" href="https://github.com/XaralampidisBasilis/incisive-ar-tool/raw/development/docs/prm/lung.nii.gz"><i class="fas fa-download"></i></a>
-    <a id="maskFile" class="filelinks" style="display:none" href="https://github.com/XaralampidisBasilis/incisive-ar-tool/raw/development/docs/prm/lung_mask.nii.gz"><i class="fas fa-download"></i></a>
+    <a id="volumeFile" class="filelinks" style="display:none" href="#"><i class="fas fa-download"></i></a>
+    <a id="maskFile" class="filelinks" style="display:none" href="#"><i class="fas fa-download"></i></a>
     <div id="overlay-content"></div>
-    <!-- tree.js and lil-gui and nifti-reader from cdn -->
-    <script src="https://cdn.jsdelivr.net/npm/nifti-reader-js@0.5.4/release/current/nifti-reader.js"></script>
-    <script type="importmap"> {
-      "imports": {
-        "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm",
-        "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
-      }
-    }
-  </script>
     <!-- main script -->
     <script type="module" src="script.js">
     </script>

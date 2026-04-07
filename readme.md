@@ -142,8 +142,6 @@ Then open:
 http://localhost:3000
 ```
 
-The app is served directly from the `docs/` workspace. There is no complex build pipeline here; most dependencies are loaded at runtime.
-
 ## Example Data
 
 The repository includes sample assets for quick testing:
@@ -152,6 +150,21 @@ The repository includes sample assets for quick testing:
 - `docs/prm/lung_mask.nii.gz`
 
 You can load them from the built-in `Examples` controls in the UI.
+
+## Deploy to GitHub Pages
+
+The app already lives in `docs/`, so the simplest GitHub Pages setup is to publish that folder directly.
+
+Recommended setup:
+
+1. Push the repository to GitHub.
+2. Open `Settings -> Pages`.
+3. Set `Source` to `Deploy from a branch`.
+4. Choose branch `main`.
+5. Choose folder `/docs`.
+6. Save.
+
+That matches the current repository structure and avoids maintaining a separate build output just for deployment.
 
 ## Current Architecture
 

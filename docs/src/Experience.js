@@ -1,4 +1,8 @@
 import * as THREE from "three";
+import fragmentModelShader from "../prm/fragment_model.glsl?raw";
+import fragmentScreenShader from "../prm/fragment_screen.glsl?raw";
+import vertexModelShader from "../prm/vertex_model.glsl?raw";
+import vertexScreenShader from "../prm/vertex_screen.glsl?raw";
 import { AppUtils } from "./core/AppUtils.js";
 import { DesktopControls } from "./core/DesktopControls.js";
 import { InteractionController } from "./core/InteractionController.js";
@@ -82,26 +86,10 @@ export class Experience {
 	}
 
 	async loadShaders() {
-		const [vertexScreen, fragmentScreen, vertexModel, fragmentModel] =
-			await Promise.all([
-				this.utils.loadShader(
-					new URL("../prm/vertex_screen.glsl", import.meta.url),
-				),
-				this.utils.loadShader(
-					new URL("../prm/fragment_screen.glsl", import.meta.url),
-				),
-				this.utils.loadShader(
-					new URL("../prm/vertex_model.glsl", import.meta.url),
-				),
-				this.utils.loadShader(
-					new URL("../prm/fragment_model.glsl", import.meta.url),
-				),
-			]);
-
-		this.shaders.vertexScreen = vertexScreen;
-		this.shaders.fragmentScreen = fragmentScreen;
-		this.shaders.vertexModel = vertexModel;
-		this.shaders.fragmentModel = fragmentModel;
+		this.shaders.vertexScreen = vertexScreenShader;
+		this.shaders.fragmentScreen = fragmentScreenShader;
+		this.shaders.vertexModel = vertexModelShader;
+		this.shaders.fragmentModel = fragmentModelShader;
 	}
 
 	refreshWorldFromData() {

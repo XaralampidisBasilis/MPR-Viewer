@@ -65,6 +65,16 @@ export class UIManager {
 
 		const volumeExampleLink = this.getRequiredElement("volumeFile");
 		const maskExampleLink = this.getRequiredElement("maskFile");
+		volumeExampleLink.href = new URL(
+			"../../prm/lung.nii.gz",
+			import.meta.url,
+		).href;
+		volumeExampleLink.download = "lung.nii.gz";
+		maskExampleLink.href = new URL(
+			"../../prm/lung_mask.nii.gz",
+			import.meta.url,
+		).href;
+		maskExampleLink.download = "lung_mask.nii.gz";
 		const examplesFolder = gui.addFolder("Examples");
 		examplesFolder.add(volumeExampleLink, "click").name("Volume");
 		examplesFolder.add(maskExampleLink, "click").name("Mask");

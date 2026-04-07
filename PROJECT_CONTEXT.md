@@ -29,7 +29,7 @@ Historically it is still labeled "Augmented Reality Tool" in the README and HTML
 
 Top-level:
 
-- `package.json`: root workspace wrapper; delegates `npm run dev` to the `docs` workspace
+- `package.json`: root workspace wrapper; delegates local development to the `docs` workspace
 - `readme.md`: short setup notes, still using older project naming
 - `docs/`: the actual app
 
@@ -55,7 +55,7 @@ Support files in `docs/prm/`:
 
 ## 3. Runtime Architecture
 
-The app has no real build step. It is served as static files and loads most dependencies directly from CDNs.
+The app is fundamentally a static site and loads most dependencies directly from CDNs.
 
 Main startup path now:
 

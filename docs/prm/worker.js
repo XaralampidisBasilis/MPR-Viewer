@@ -1,8 +1,14 @@
-import "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest";
-import "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.14.0/ort.wasm.min.js";
+import * as tf from "@tensorflow/tfjs";
+import * as ort from "onnxruntime-web";
 
 ort.env.wasm.wasmPaths =
 	"https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.14.0/";
+
+const encoderModelUrl = new URL("./mobilesam.encoder.onnx", import.meta.url);
+const decoderModelUrl = new URL(
+	"./mobilesam.decoder.quant.onnx",
+	import.meta.url,
+);
 
 class SamWorker {
 	constructor() {
@@ -48,10 +54,8 @@ class SamWorker {
 		const start = performance.now();
 
 		ort.env.wasm.numThreads = 1;
-		this.encoder = await ort.InferenceSession.create("mobilesam.encoder.onnx");
-		this.decoder = await ort.InferenceSession.create(
-			"mobilesam.decoder.quant.onnx",
-		);
+		this.encoder = await ort.InferenceSession.create(encoderModelUrl.href);
+		this.decoder = await ort.InferenceSession.create(decoderModelUrl.href);
 
 		self.postMessage({
 			type: "load",
