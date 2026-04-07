@@ -37,8 +37,16 @@ export class InteractionController {
 		}
 	}
 
-	onVolumeUpload(event) {
-		this.app.utils.loadNIFTI(event.target.files[0]).then((image3D) => {
+	reportError(context, error) {
+		console.error(`${context} failed`, error);
+	}
+
+	async onVolumeUpload(event) {
+		const input = event.target;
+		const file = input.files?.[0];
+
+		try {
+			const image3D = await this.app.utils.loadNIFTI(file);
 			this.app.volumeManager.update(image3D);
 
 			if (!this.app.mask.userData.image3D) {
@@ -46,26 +54,43 @@ export class InteractionController {
 			}
 
 			this.app.refreshWorldFromData();
-		});
+		} catch (error) {
+			this.reportError("Volume upload", error);
+		} finally {
+			input.value = "";
+		}
 	}
 
-	onMaskUpload(event) {
-		this.app.utils.loadNIFTI(event.target.files[0]).then((image3D) => {
+	async onMaskUpload(event) {
+		const input = event.target;
+		const file = input.files?.[0];
+
+		try {
+			const [image3D, raw] = await Promise.all([
+				this.app.utils.loadNIFTI(file),
+				this.app.utils.loadRawNIFTI(file),
+			]);
+
 			this.app.maskManager.update(image3D);
+			this.app.mask.userData.raw = raw;
 
 			if (!this.app.volume.userData.image3D) {
 				this.app.volumeManager.updateFromMask();
 			}
 
 			this.app.refreshWorldFromData();
-		});
-
-		this.app.utils.loadRawNIFTI(event.target.files[0]).then((raw) => {
-			this.app.mask.userData.raw = raw;
-		});
+		} catch (error) {
+			this.reportError("Mask upload", error);
+		} finally {
+			input.value = "";
+		}
 	}
 
 	onMaskDownload() {
+		if (!this.app.mask.userData.raw || !this.app.mask.userData.texture?.image) {
+			return;
+		}
+
 		const header = this.app.mask.userData.raw.slice(0, 352);
 		const headerTemp = new Uint16Array(header);
 		headerTemp[35] = 2;
@@ -80,6 +105,7 @@ export class InteractionController {
 	onResize() {
 		this.app.camera.aspect = window.innerWidth / window.innerHeight;
 		this.app.camera.updateProjectionMatrix();
+		this.app.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 		this.app.renderer.setSize(window.innerWidth, window.innerHeight);
 	}
 
@@ -172,9 +198,7 @@ export class InteractionController {
 	}
 
 	onEnteringSegmentMode() {
-		for (const worker of this.app.workers) {
-			this.app.workerManager.runEncode(worker.userData.id);
-		}
+		this.app.workerManager.runEncodeAll();
 
 		this.app.screen.rotation.set(0, 0, 0);
 		this.app.brush.scale.setScalar(0.4);
@@ -263,9 +287,7 @@ export class InteractionController {
 			if (!event.userData.flag) this.onGestureMoveDisplay(event);
 
 			if (event.userData.flag && event.end) {
-				for (const worker of this.app.workers) {
-					this.app.workerManager.runEncode(worker.userData.id);
-				}
+				this.app.workerManager.runEncodeAll();
 			}
 		}
 
@@ -866,6 +888,10 @@ export class InteractionController {
 		}
 
 		const worker = this.app.workers[0];
+		if (!worker || this.app.brush.userData.monitorIndex === undefined) {
+			return;
+		}
+
 		const label = this.app.brush.userData.mode === "ADD" ? 1 : 0;
 		const coord = this.app.utils
 			.localPositionToVoxel(this.app.brush.position)
@@ -892,7 +918,11 @@ export class InteractionController {
 			return;
 		}
 
-		const workerData = this.app.workers[0].userData;
+		const workerData = this.app.workers[0]?.userData;
+		if (!workerData || !this.app.mask.userData.texture?.image) {
+			return;
+		}
+
 		this.app.display.remove(...this.app.display.userData.points);
 		this.app.display.userData.points = [];
 		workerData.slice.coords = [];

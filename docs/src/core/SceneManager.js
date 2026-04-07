@@ -33,7 +33,7 @@ export class SceneManager {
 			preserveDrawingBuffer: true,
 		});
 
-		this.app.renderer.setPixelRatio(window.devicePixelRatio);
+		this.app.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 		this.app.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.app.canvas.appendChild(this.app.renderer.domElement);
 

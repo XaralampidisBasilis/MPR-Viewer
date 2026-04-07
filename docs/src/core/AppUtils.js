@@ -11,7 +11,7 @@ export class AppUtils {
 		const response = await fetch(url);
 
 		if (!response.ok) {
-			throw new Error(`Failed to load shader: ${url}`);
+			throw new Error(`Failed to load shader: ${response.url || url}`);
 		}
 
 		return await response.text();
@@ -19,56 +19,81 @@ export class AppUtils {
 
 	loadNIFTI(file) {
 		return new Promise((resolve, reject) => {
-			if (!file) reject("Error: No file selected");
+			if (!file) {
+				reject(new Error("No file selected"));
+				return;
+			}
 
-			const reader = new PIXPIPE.FileToArrayBufferReader();
-			reader.addInput(file);
-			reader.update();
+			try {
+				const reader = new PIXPIPE.FileToArrayBufferReader();
+				reader.on("ready", function () {
+					try {
+						const decoder = new PIXPIPE.Image3DGenericDecoder();
+						const output = this.getOutput();
+						decoder.addInput(output);
+						decoder.update();
 
-			reader.on("ready", function () {
-				const decoder = new PIXPIPE.Image3DGenericDecoder();
-				decoder.addInput(this.getOutput());
-				decoder.update();
+						const image3D = decoder.getOutput();
+						if (!image3D) {
+							reject(new Error(`File cannot be decoded: ${file.name}`));
+							return;
+						}
 
-				if (!decoder.getOutput()) reject("Error: File cannot be decoded");
-				resolve(decoder.getOutput());
-			});
+						resolve(image3D);
+					} catch (error) {
+						reject(error);
+					}
+				});
+
+				reader.addInput(file);
+				reader.update();
+			} catch (error) {
+				reject(error);
+			}
 		});
 	}
 
 	loadRawNIFTI(file) {
 		return new Promise((resolve, reject) => {
-			if (!file) reject("Error: No file selected");
+			if (!file) {
+				reject(new Error("No file selected"));
+				return;
+			}
+
+			if (typeof nifti === "undefined") {
+				reject(new Error("NIFTI reader is not available in the current page"));
+				return;
+			}
 
 			const fileReader = new FileReader();
+			fileReader.onerror = () => {
+				reject(new Error(`Failed to read file: ${file.name}`));
+			};
 			fileReader.readAsArrayBuffer(file);
 
 			fileReader.onloadend = (event) => {
-				if (event.target.readyState === FileReader.DONE) {
-					let result;
+				if (event.target?.readyState !== FileReader.DONE) {
+					return;
+				}
 
-					if (nifti.isCompressed(event.target.result)) {
-						result = nifti.decompress(event.target.result);
-					} else {
-						result = event.target.result;
-					}
-
+				try {
+					const rawBuffer = event.target.result;
+					const result = nifti.isCompressed(rawBuffer)
+						? nifti.decompress(rawBuffer)
+						: rawBuffer;
 					resolve(result);
+				} catch (error) {
+					reject(error);
 				}
 			};
 		});
 	}
 
 	saveData(data, fileName) {
-		const element = document.createElement("a");
-		document.body.appendChild(element);
-		element.style.display = "none";
-
 		const blob = new Blob(data, { type: "application/octet-stream" });
 		const url = window.URL.createObjectURL(blob);
+		const element = this.createTemporaryDownloadLink(url, fileName);
 
-		element.href = url;
-		element.download = fileName;
 		element.click();
 
 		window.URL.revokeObjectURL(url);
@@ -76,16 +101,23 @@ export class AppUtils {
 	}
 
 	downloadURI(uri, name) {
-		const element = document.createElement("a");
-		document.body.appendChild(element);
-		element.style.display = "none";
-
-		element.href = uri;
-		element.download = name;
+		const element = this.createTemporaryDownloadLink(uri, name);
 		element.click();
 
-		window.URL.revokeObjectURL(uri);
+		if (uri.startsWith("blob:")) {
+			window.URL.revokeObjectURL(uri);
+		}
+
 		document.body.removeChild(element);
+	}
+
+	createTemporaryDownloadLink(href, download) {
+		const element = document.createElement("a");
+		element.href = href;
+		element.download = download;
+		element.style.display = "none";
+		document.body.appendChild(element);
+		return element;
 	}
 
 	projectBoxOnPlane(box, plane) {
@@ -186,6 +218,11 @@ export class AppUtils {
 	}
 
 	bufferAction(condition, action, period = 500) {
+		if (condition()) {
+			action();
+			return null;
+		}
+
 		const id = setInterval(() => {
 			if (condition()) {
 				clearInterval(id);

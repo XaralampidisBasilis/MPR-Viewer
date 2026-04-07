@@ -6,61 +6,130 @@ export class SegmentationWorkerManager {
 	setup() {
 		const workerUrl = new URL("../../prm/worker.js", import.meta.url);
 
-		this.app.workers = new Array(1)
-			.fill()
-			.map(() => new Worker(workerUrl, { type: "module" }));
-
-		this.app.workers.forEach((worker, i) => {
-			worker.userData = {
-				id: i,
-				loaded: false,
-				encoding: false,
-				encoded: false,
-				decoding: false,
-				decoded: false,
-				slice: {
-					coords: [],
-					labels: [],
-					axis: undefined,
-					number: undefined,
-					data: [],
-					textureData: [],
-					indices: [],
-				},
-			};
-
-			worker.addEventListener("message", (event) => {
-				if (event.data.type === "load") this.onLoaded(event);
-				if (event.data.type === "encode") this.onEncoded(event);
-				if (event.data.type === "decode") this.onDecoded(event);
-			});
-
-			this.runLoad(i);
+		this.app.workers = Array.from({ length: 1 }, () => {
+			return new Worker(workerUrl, { type: "module" });
 		});
+
+		this.app.workers.forEach((worker, id) => {
+			worker.userData = this.createWorkerState(id);
+			worker.addEventListener("message", (event) => this.onMessage(event));
+			worker.addEventListener("error", (event) => this.onWorkerError(event));
+			this.runLoad(id);
+		});
+	}
+
+	createWorkerState(id) {
+		return {
+			id,
+			loaded: false,
+			encoded: false,
+			decoded: false,
+			encodeTimer: null,
+			decodeTimer: null,
+			lastError: null,
+			slice: this.createSliceState(),
+		};
+	}
+
+	createSliceState() {
+		return {
+			coords: [],
+			labels: [],
+			axis: undefined,
+			number: undefined,
+			data: [],
+			textureData: [],
+			indices: [],
+		};
+	}
+
+	getWorker(id) {
+		return this.app.workers?.[id] ?? null;
+	}
+
+	hasSegmentationSourceData() {
+		return Boolean(
+			this.app.volume?.userData?.data0 &&
+				this.app.volume?.userData?.samples &&
+				this.app.mask?.userData?.texture?.image?.data,
+		);
+	}
+
+	setBrushVisible(visible) {
+		if (this.app.brush) {
+			this.app.brush.visible = visible;
+		}
+	}
+
+	cancelBufferedAction(workerData, key) {
+		if (!workerData?.[key]) {
+			return;
+		}
+
+		clearInterval(workerData[key]);
+		workerData[key] = null;
+	}
+
+	resetSliceState(workerData) {
+		if (!workerData) {
+			return;
+		}
+
+		this.cancelBufferedAction(workerData, "encodeTimer");
+		this.cancelBufferedAction(workerData, "decodeTimer");
+		workerData.encoded = false;
+		workerData.decoded = false;
+		workerData.lastError = null;
+		workerData.slice = this.createSliceState();
+	}
+
+	resetAllSlices() {
+		for (const worker of this.app.workers) {
+			this.resetSliceState(worker.userData);
+		}
+	}
+
+	runEncodeAll() {
+		for (const worker of this.app.workers) {
+			this.runEncode(worker.userData.id);
+		}
 	}
 
 	runLoad(id) {
-		console.log(`Worker ${id}: Loading models`);
+		const worker = this.getWorker(id);
+		if (!worker) {
+			return false;
+		}
 
-		this.app.workers[id].postMessage({
+		console.log(`Worker ${id}: Loading models`);
+		worker.postMessage({
 			type: "load",
 			data: {},
 		});
+
+		return true;
 	}
 
 	runEncode(id) {
-		this.app.brush.visible = false;
-
-		const workerData = this.app.workers[id].userData;
-		if (workerData.encoding) {
-			clearInterval(workerData.encoding);
+		const worker = this.getWorker(id);
+		if (!worker || !this.hasSegmentationSourceData()) {
+			return false;
 		}
+
+		const workerData = worker.userData;
+		this.setBrushVisible(false);
+		this.cancelBufferedAction(workerData, "encodeTimer");
+		this.cancelBufferedAction(workerData, "decodeTimer");
+		workerData.encoded = false;
+		workerData.decoded = false;
+		workerData.lastError = null;
 
 		console.log(`Worker ${id}: Buffered encoding`);
 
-		workerData.encoding = this.app.utils.bufferAction(
-			() => workerData.loaded,
+		workerData.encodeTimer = this.app.utils.bufferAction(
+			() => workerData.loaded && this.hasSegmentationSourceData(),
 			() => {
+				workerData.encodeTimer = null;
 				console.log(`Worker ${id}: Started encoding`);
 
 				const { slice } = workerData;
@@ -75,6 +144,11 @@ export class SegmentationWorkerManager {
 					slice.number,
 				);
 
+				if (slice.data.length === 0) {
+					this.setBrushVisible(true);
+					return;
+				}
+
 				const textureData = this.app.mask.userData.texture.image.data;
 				slice.textureData = Array.from(
 					slice.indices.map((index) => textureData[index]),
@@ -84,7 +158,7 @@ export class SegmentationWorkerManager {
 					.toArray()
 					.toSpliced(slice.axis, 1);
 
-				this.app.workers[id].postMessage({
+				worker.postMessage({
 					type: "encode",
 					input: {
 						data: new Float32Array(slice.data),
@@ -94,22 +168,34 @@ export class SegmentationWorkerManager {
 				});
 			},
 		);
+
+		return true;
 	}
 
 	runDecode(id) {
-		const workerData = this.app.workers[id].userData;
-		if (workerData.decoding) {
-			clearInterval(workerData.decoding);
+		const worker = this.getWorker(id);
+		if (!worker) {
+			return false;
 		}
+
+		const workerData = worker.userData;
+		if (workerData.slice.coords.length === 0) {
+			return false;
+		}
+
+		this.cancelBufferedAction(workerData, "decodeTimer");
+		workerData.decoded = false;
+		workerData.lastError = null;
 
 		console.log(`Worker ${id}: Buffered decoding`);
 
-		workerData.decoding = this.app.utils.bufferAction(
-			() => workerData.encoded,
+		workerData.decodeTimer = this.app.utils.bufferAction(
+			() => workerData.encoded && workerData.slice.coords.length > 0,
 			() => {
+				workerData.decodeTimer = null;
 				const { slice } = workerData;
 
-				this.app.workers[id].postMessage({
+				worker.postMessage({
 					type: "decode",
 					input: {
 						points: slice.coords,
@@ -120,11 +206,31 @@ export class SegmentationWorkerManager {
 				console.log(`Worker ${id}: Started decoding`);
 			},
 		);
+
+		return true;
+	}
+
+	onMessage(event) {
+		switch (event.data.type) {
+			case "load":
+				this.onLoaded(event);
+				break;
+			case "encode":
+				this.onEncoded(event);
+				break;
+			case "decode":
+				this.onDecoded(event);
+				break;
+			case "error":
+				this.onErrored(event);
+				break;
+		}
 	}
 
 	onLoaded(event) {
 		const workerData = event.currentTarget.userData;
 		workerData.loaded = true;
+		workerData.lastError = null;
 
 		console.log(
 			`Worker ${workerData.id}: Loading models took ${event.data.output.time} seconds`,
@@ -134,9 +240,10 @@ export class SegmentationWorkerManager {
 	onEncoded(event) {
 		const workerData = event.currentTarget.userData;
 
-		this.app.brush.visible = true;
-		workerData.encoding = false;
+		this.setBrushVisible(true);
+		workerData.encodeTimer = null;
 		workerData.encoded = true;
+		workerData.lastError = null;
 
 		console.log(
 			`Worker ${workerData.id}: Computing image embedding took ${event.data.output.time} seconds`,
@@ -145,24 +252,37 @@ export class SegmentationWorkerManager {
 
 	onDecoded(event) {
 		const workerData = event.currentTarget.userData;
-		const textureData = this.app.mask.userData.texture.image.data;
+		const textureData = this.app.mask?.userData?.texture?.image?.data;
 		const segmentData = event.data.output.mask;
 		const sliceIndices = workerData.slice.indices;
 
-		workerData.decoding = false;
+		workerData.decodeTimer = null;
 		workerData.decoded = true;
+		workerData.lastError = null;
+
+		if (!textureData || !segmentData || sliceIndices.length === 0) {
+			return;
+		}
 
 		console.log(
 			`Worker ${workerData.id}: Generating masks took ${event.data.output.time} seconds`,
 		);
 
+		const count = Math.min(
+			sliceIndices.length,
+			segmentData.length,
+			workerData.slice.textureData.length,
+		);
+
 		this.app.mask.userData.history.push({
-			data: Array.from(sliceIndices.map((index) => textureData[index])),
-			indices: Array.from(sliceIndices),
+			data: Array.from(
+				sliceIndices.slice(0, count).map((index) => textureData[index]),
+			),
+			indices: Array.from(sliceIndices.slice(0, count)),
 			box: this.app.model.userData.box.clone(),
 		});
 
-		for (let n = 0; n < sliceIndices.length; n++) {
+		for (let n = 0; n < count; n++) {
 			textureData[sliceIndices[n]] = Math.max(
 				workerData.slice.textureData[n],
 				segmentData[n],
@@ -174,5 +294,28 @@ export class SegmentationWorkerManager {
 		this.app.modelManager.computeBoundingBox();
 		this.app.modelManager.updateUniformsBox();
 		this.app.mask.userData.texture.needsUpdate = true;
+	}
+
+	onErrored(event) {
+		const workerData = event.currentTarget.userData;
+		const stage = event.data.output?.stage ?? "worker";
+		const message = event.data.output?.message ?? "Unknown worker error";
+		this.handleWorkerFailure(workerData, new Error(`[${stage}] ${message}`));
+	}
+
+	onWorkerError(event) {
+		const workerData = event.currentTarget.userData;
+		const message = event.message || "Unknown worker error";
+		this.handleWorkerFailure(workerData, new Error(message));
+	}
+
+	handleWorkerFailure(workerData, error) {
+		this.cancelBufferedAction(workerData, "encodeTimer");
+		this.cancelBufferedAction(workerData, "decodeTimer");
+		this.setBrushVisible(true);
+		workerData.encoded = false;
+		workerData.decoded = false;
+		workerData.lastError = error;
+		console.error(`Worker ${workerData.id} failed`, error);
 	}
 }

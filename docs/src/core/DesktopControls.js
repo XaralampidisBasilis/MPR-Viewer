@@ -207,6 +207,11 @@ export class DesktopControls {
 				this.endMaskEdit();
 			}
 
+			const domElement = this.app.renderer.domElement;
+			if (domElement.hasPointerCapture?.(event.pointerId)) {
+				domElement.releasePointerCapture(event.pointerId);
+			}
+
 			this.drag = null;
 			this.app.orbitControls.enabled = true;
 		} else if (
@@ -411,9 +416,7 @@ export class DesktopControls {
 		this.app.model.material.needsUpdate = true;
 
 		if (this.mode === "Segment") {
-			for (const worker of this.app.workers) {
-				this.app.workerManager.runEncode(worker.userData.id);
-			}
+			this.app.workerManager.runEncodeAll();
 		}
 	}
 
@@ -586,10 +589,7 @@ export class DesktopControls {
 		this.app.screen.position.setComponent(axis, nextPosition);
 		this.app.screen.updateMatrix();
 		this.app.displayManager.update();
-
-		for (const worker of this.app.workers) {
-			this.app.workerManager.runEncode(worker.userData.id);
-		}
+		this.app.workerManager.runEncodeAll();
 
 		return true;
 	}

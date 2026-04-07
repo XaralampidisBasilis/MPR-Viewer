@@ -24,6 +24,7 @@ export class Experience {
 
 	constructor() {
 		this.shaders = {};
+		this.workers = [];
 		this.hitTestSource = null;
 		this.hitTestSourceRequested = false;
 		this.hitTestResult = null;
@@ -81,18 +82,26 @@ export class Experience {
 	}
 
 	async loadShaders() {
-		this.shaders.vertexScreen = await this.utils.loadShader(
-			new URL("../prm/vertex_screen.glsl", import.meta.url),
-		);
-		this.shaders.fragmentScreen = await this.utils.loadShader(
-			new URL("../prm/fragment_screen.glsl", import.meta.url),
-		);
-		this.shaders.vertexModel = await this.utils.loadShader(
-			new URL("../prm/vertex_model.glsl", import.meta.url),
-		);
-		this.shaders.fragmentModel = await this.utils.loadShader(
-			new URL("../prm/fragment_model.glsl", import.meta.url),
-		);
+		const [vertexScreen, fragmentScreen, vertexModel, fragmentModel] =
+			await Promise.all([
+				this.utils.loadShader(
+					new URL("../prm/vertex_screen.glsl", import.meta.url),
+				),
+				this.utils.loadShader(
+					new URL("../prm/fragment_screen.glsl", import.meta.url),
+				),
+				this.utils.loadShader(
+					new URL("../prm/vertex_model.glsl", import.meta.url),
+				),
+				this.utils.loadShader(
+					new URL("../prm/fragment_model.glsl", import.meta.url),
+				),
+			]);
+
+		this.shaders.vertexScreen = vertexScreen;
+		this.shaders.fragmentScreen = fragmentScreen;
+		this.shaders.vertexModel = vertexModel;
+		this.shaders.fragmentModel = fragmentModel;
 	}
 
 	refreshWorldFromData() {
@@ -101,6 +110,7 @@ export class Experience {
 		}
 
 		this.display.userData.points = [];
+		this.workerManager.resetAllSlices();
 		this.screenManager.setup();
 		this.modelManager.setup();
 		this.containerManager.setup();

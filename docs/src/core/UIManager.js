@@ -6,13 +6,26 @@ export class UIManager {
 	}
 
 	openHelp() {
-		this.popupBackdrop.style.display = "block";
-		this.popupWindow.style.display = "block";
+		this.setHelpVisibility(true);
 	}
 
 	closeHelp() {
-		this.popupBackdrop.style.display = "none";
-		this.popupWindow.style.display = "none";
+		this.setHelpVisibility(false);
+	}
+
+	setHelpVisibility(visible) {
+		this.popupBackdrop.style.display = visible ? "block" : "none";
+		this.popupWindow.style.display = visible ? "block" : "none";
+	}
+
+	getRequiredElement(id) {
+		const element = document.getElementById(id);
+
+		if (!element) {
+			throw new Error(`Missing required UI element: #${id}`);
+		}
+
+		return element;
 	}
 
 	setup() {
@@ -20,55 +33,46 @@ export class UIManager {
 		gui.domElement.classList.add("force-touch-styles");
 		this.gui = gui;
 
-		const folders = [];
-		const controls = [];
-
 		this.modeState = {
 			mode: this.app.interaction.mode,
 		};
 
-		folders[4] = gui.addFolder("Mode");
-		this.modeController = folders[4]
+		const modeFolder = gui.addFolder("Mode");
+		this.modeController = modeFolder
 			.add(this.modeState, "mode", ["Place", "Inspect", "Edit", "Segment"])
 			.name("Current");
 		this.modeController.onChange((mode) => this.app.interaction.setMode(mode));
 
-		controls[0] = [];
-		controls[0][0] = document.getElementById("volumeId");
-		controls[0][0].addEventListener("change", (event) =>
+		const volumeInput = this.getRequiredElement("volumeId");
+		volumeInput.addEventListener("change", (event) =>
 			this.app.interaction.onVolumeUpload(event),
 		);
+		const volumeFolder = gui.addFolder("Volume");
+		volumeFolder.add(volumeInput, "click").name("Upload");
 
-		folders[0] = gui.addFolder("Volume");
-		folders[0].add(controls[0][0], "click").name("Upload");
-
-		controls[1] = [];
-		controls[1][0] = document.getElementById("maskId");
-		controls[1][0].addEventListener("change", (event) =>
+		const maskInput = this.getRequiredElement("maskId");
+		maskInput.addEventListener("change", (event) =>
 			this.app.interaction.onMaskUpload(event),
 		);
-
-		folders[1] = gui.addFolder("Mask");
-		folders[1].add(controls[1][0], "click").name("Upload");
-		folders[1]
+		const maskFolder = gui.addFolder("Mask");
+		maskFolder.add(maskInput, "click").name("Upload");
+		maskFolder
 			.add(
 				{ action: (event) => this.app.interaction.onMaskDownload(event) },
 				"action",
 			)
 			.name("Download");
 
-		controls[3] = [];
-		controls[3][0] = document.getElementById("volumeFile");
-		controls[3][1] = document.getElementById("maskFile");
+		const volumeExampleLink = this.getRequiredElement("volumeFile");
+		const maskExampleLink = this.getRequiredElement("maskFile");
+		const examplesFolder = gui.addFolder("Examples");
+		examplesFolder.add(volumeExampleLink, "click").name("Volume");
+		examplesFolder.add(maskExampleLink, "click").name("Mask");
 
-		folders[3] = gui.addFolder("Examples");
-		folders[3].add(controls[3][0], "click").name("Volume");
-		folders[3].add(controls[3][1], "click").name("Mask");
+		this.popupWindow = this.getRequiredElement("popup-window");
+		this.popupBackdrop = this.getRequiredElement("popup-backdrop");
 
-		this.popupWindow = document.getElementById("popup-window");
-		this.popupBackdrop = document.getElementById("popup-backdrop");
-
-		const closeButton = document.getElementById("close-button");
+		const closeButton = this.getRequiredElement("close-button");
 		closeButton.addEventListener("click", () => this.closeHelp());
 		this.popupBackdrop.addEventListener("click", () => this.closeHelp());
 		window.addEventListener("keydown", (event) => {
@@ -77,13 +81,13 @@ export class UIManager {
 			}
 		});
 
-		controls[2] = document.getElementById("popup-link");
-		controls[2].addEventListener("click", (event) => {
+		const popupLink = this.getRequiredElement("popup-link");
+		popupLink.addEventListener("click", (event) => {
 			event.preventDefault();
 			this.openHelp();
 		});
 
-		folders[2] = gui.addFolder("Info");
-		folders[2].add(controls[2], "click").name("Open");
+		const infoFolder = gui.addFolder("Info");
+		infoFolder.add(popupLink, "click").name("Open");
 	}
 }
