@@ -5,6 +5,16 @@ export class UIManager {
 		this.app = app;
 	}
 
+	openHelp() {
+		this.popupBackdrop.style.display = "block";
+		this.popupWindow.style.display = "block";
+	}
+
+	closeHelp() {
+		this.popupBackdrop.style.display = "none";
+		this.popupWindow.style.display = "none";
+	}
+
 	setup() {
 		const gui = new GUI({ closeFolders: true });
 		gui.domElement.classList.add("force-touch-styles");
@@ -55,16 +65,22 @@ export class UIManager {
 		folders[3].add(controls[3][0], "click").name("Volume");
 		folders[3].add(controls[3][1], "click").name("Mask");
 
-		const popupWindow = document.getElementById("popup-window");
+		this.popupWindow = document.getElementById("popup-window");
+		this.popupBackdrop = document.getElementById("popup-backdrop");
+
 		const closeButton = document.getElementById("close-button");
-		closeButton.addEventListener("click", () => {
-			popupWindow.style.display = "none";
+		closeButton.addEventListener("click", () => this.closeHelp());
+		this.popupBackdrop.addEventListener("click", () => this.closeHelp());
+		window.addEventListener("keydown", (event) => {
+			if (event.key === "Escape") {
+				this.closeHelp();
+			}
 		});
 
 		controls[2] = document.getElementById("popup-link");
 		controls[2].addEventListener("click", (event) => {
 			event.preventDefault();
-			popupWindow.style.display = "block";
+			this.openHelp();
 		});
 
 		folders[2] = gui.addFolder("Info");
