@@ -34,8 +34,6 @@ uniform float uContrast;
 // axis uniforms
 uniform float uAxisVisible;
 
-// #define epsilon 0.005
-
 out vec4 color;
 
 float getSample( sampler3D map, vec3 position ) {
@@ -129,6 +127,4 @@ void main() {
   
     float isNotDiscarded = min( isInside, max( isContainer, uPlaneVisible ));
     if ( isNotDiscarded == 0.0 ) discard;
-    // if ( isAxis == 1.0 ) discard;
-  
 }

@@ -16,19 +16,20 @@ export class ScreenManager {
 		const geometry = [0, 1, 2].map(
 			() => new THREE.PlaneGeometry(length, length),
 		);
-		const material = [0, 1, 2].map(
-			() =>
-				new THREE.ShaderMaterial({
-					uniforms: {},
-					vertexShader: shaders.vertexScreen,
-					fragmentShader: shaders.fragmentScreen,
-					glslVersion: THREE.GLSL3,
-					side: THREE.DoubleSide,
-					transparent: true,
-					depthWrite: true,
-					depthTest: true,
-				}),
-		);
+		const material = [0, 1, 2].map((_, index) => {
+			const shaderMaterial = new THREE.ShaderMaterial({
+				uniforms: {},
+				vertexShader: shaders.vertexScreen,
+				fragmentShader: shaders.fragmentScreen,
+				glslVersion: THREE.GLSL3,
+				side: THREE.DoubleSide,
+				transparent: true,
+				depthWrite: true,
+				depthTest: true,
+			});
+			shaderMaterial.name = `ScreenMonitorMaterial-${index}`;
+			return shaderMaterial;
+		});
 		const monitors = [];
 		monitors[0] = new THREE.Mesh(geometry[0], material[0]).rotateY(Math.PI / 2);
 		monitors[1] = new THREE.Mesh(geometry[1], material[1]).rotateX(

@@ -19,6 +19,7 @@ export class ModelManager {
 			depthTest: false,
 			depthWrite: true,
 		});
+		this.app.model.material.name = "VolumeMaskModelMaterial";
 
 		this.computeBoundingBox();
 	}

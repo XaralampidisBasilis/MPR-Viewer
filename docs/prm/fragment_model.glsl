@@ -30,14 +30,11 @@ out vec4 color;
 #define stepFactor 1.0
 
 float getSample( vec3 position ) {
-
     vec3 uvw = position + 0.5;
     return texture( uMaskMap, uvw ).r;
-
 }
 
 vec3 getNormal( vec3 position ) {
-
     vec3 offset = uMaskTexelSize;
     vec3 deltaInv = 0.5 / offset;
 
@@ -47,19 +44,17 @@ vec3 getNormal( vec3 position ) {
         getSample(position + vec3(0.0, 0.0, -offset.z)) - getSample(position + vec3(0.0, 0.0, offset.z))
     );
     
-    gradient *= deltaInv;  
+    gradient *= deltaInv;
 
     return normalize( gradient );
 
 }
 
 float getStep( vec3 dir ) {
-
     vec3 tMax = uMaskTexelSize / abs( dir ); 
     float step = min( tMax.x, min( tMax.y, tMax.z ) );
 
     return step * stepFactor;
-
 }
 
 bool isClipped( vec3 point ) {   
@@ -135,7 +130,6 @@ float intersectScreen( vec3 origin, vec3 direction ) {
 }
 
 vec2 rayMarch( vec3 origin, vec3 direction, vec2 bounds, float step ) {
-
     vec3 position = origin + bounds.x * direction;
     float intensityPrev = getSample(position);
     float intensity;
@@ -155,7 +149,6 @@ vec2 rayMarch( vec3 origin, vec3 direction, vec2 bounds, float step ) {
     intensity = ( difference > 0.0 ) ? intensity : intensityPrev;
 
     return vec2(bounds.x, intensity);
-
 }
 
 void main(){

@@ -32,6 +32,7 @@ export class SceneManager {
 			powerPreference: "low-power",
 			preserveDrawingBuffer: true,
 		});
+		this.app.renderer.debug.checkShaderErrors = true;
 
 		this.app.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 		this.app.renderer.setSize(window.innerWidth, window.innerHeight);
