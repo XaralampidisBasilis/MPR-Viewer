@@ -9,6 +9,7 @@ Current architecture note:
 - `docs/script.js` is now a tiny bootstrap file
 - The app entry point is `docs/src/Experience.js`
 - Runtime responsibilities are split across `docs/src/core/*` and `docs/src/managers/*`
+- Desktop/browser interaction now also exists through `docs/src/core/DesktopControls.js`
 - The behavior is still the same AR/volume/mask tool, but the old single-file structure has been replaced with managers around display, screen, model, mask, workers, XR, and interaction
 
 ## 1. What This Repo Is

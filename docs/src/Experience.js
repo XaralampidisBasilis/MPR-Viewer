@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { AppUtils } from "./core/AppUtils.js";
+import { DesktopControls } from "./core/DesktopControls.js";
 import { InteractionController } from "./core/InteractionController.js";
 import { SceneManager } from "./core/SceneManager.js";
 import { SegmentationWorkerManager } from "./core/SegmentationWorkerManager.js";
@@ -62,12 +63,14 @@ export class Experience {
 		this.sceneManager = new SceneManager(this);
 		this.uiManager = new UIManager(this);
 		this.xrManager = new XRManager(this);
+		this.desktopControls = new DesktopControls(this);
 	}
 
 	async init() {
 		await this.loadShaders();
 		this.sceneManager.setupObjects();
 		this.sceneManager.setupScene();
+		this.desktopControls.setup();
 		this.uiManager.setup();
 		this.xrManager.setup();
 		this.workerManager.setup();
@@ -110,5 +113,13 @@ export class Experience {
 		this.displayManager.update();
 		this.displayManager.updateUI();
 		this.display.visible = true;
+	}
+
+	getViewRay() {
+		if (this.renderer?.xr?.isPresenting && this.gestures) {
+			return this.gestures.raycasters.view.ray;
+		}
+
+		return this.desktopControls.viewRay;
 	}
 }

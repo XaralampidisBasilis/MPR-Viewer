@@ -8,19 +8,17 @@
 </head>
 
 <body>
-    <!-- logo -->
-    <div id="logoDiv">
-        <!-- incisive logo -->
-        <div>
-            <a href="https://cordis.europa.eu/project/id/952179">
-                <img alt="INCISIVE Cordis webpage" src="https://incisive-project.eu/wp-content/uploads/2021/01/incisive-header-logo.svg" height="20">
-            </a>
-        </div>
-    </div>
     <!-- instructions -->
     <a href="#" id="popup-link" style="display:none"></a>
     <div id="popup-window">
         <h1>Gestures</h1>
+        <h2>Desktop</h2>
+        <p>1 / 2 / 3 / 4: switch to Place / Inspect / Edit / Segment</p>
+        <p>right mouse drag: orbit camera</p>
+        <p>mouse wheel: zoom camera</p>
+        <p>ctrl+z / ctrl+y: undo / redo</p>
+        <p>x: toggle brush add/subtract in Edit and Segment</p>
+        <p>c: clear Segment prompt points</p>
         <h2>General</h2>
         <p>swipe down: undo</p>
         <p>swipe up: redo</p>
@@ -28,12 +26,18 @@
         <p>implode: reset</p>
         <p>explode: exit AR</p>
         <h2>Place</h2>
+        <p>desktop left drag: move volume</p>
+        <p>desktop alt + left drag: rotate volume</p>
+        <p>desktop shift + mouse wheel: scale volume</p>
         <p>double tap: place volume on cursor/hide volume</p>
         <p>pan: rotate volume</p>
         <p>pinch: scale volume</p>
         <p>twist: roll volume </p>
         <p>hold: move volume </p>
         <h2>Inspect</h2>
+        <p>desktop left drag on slice: move slice</p>
+        <p>desktop alt + left drag on slice: rotate slice stack</p>
+        <p>desktop double click on slice: hide/reveal plane</p>
         <p>pan: rotate planes</p>
         <p>twist: rotate all 3 planes</p>
         <p>hold: move planes </p>
@@ -41,11 +45,19 @@
         <p>double tap: hide/reveal plane</p>
         <p>pinch: scale volume</p>
         <h2>Edit</h2>
+        <p>desktop left drag on slice: paint mask</p>
+        <p>desktop shift + mouse wheel: resize brush</p>
+        <p>desktop double click or x: toggle brush mode</p>
         <p>pan: rotate volume</p>
         <p>twist: change image contrast</p>
         <p>hold: edit mask </p>
         <p>double tap: change brush mode</p>
         <p>pinch: scale volume</p>
+        <h2>Segment</h2>
+        <p>desktop left click on slice: add prompt point</p>
+        <p>desktop alt + mouse wheel: move current slice</p>
+        <p>desktop shift + mouse wheel: resize brush</p>
+        <p>desktop double click or x: toggle prompt label</p>
         <button type="button" id="close-button">Close</button>
     </div>
     <!-- lil-gui buttons -->

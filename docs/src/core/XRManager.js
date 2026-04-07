@@ -72,6 +72,10 @@ export class XRManager {
 	}
 
 	updateAnimation(timestamp, frame) {
+		if (!this.app.renderer.xr.isPresenting) {
+			this.app.desktopControls.update();
+		}
+
 		if (
 			this.app.renderer.xr.isPresenting &&
 			this.app.reticle.userData.enabled
@@ -162,7 +166,7 @@ export class XRManager {
 		this.app.display.position
 			.copy(this.app.volume.userData.size)
 			.divideScalar(2);
-		this.app.display.userData.modes = ["Place", "Inspect", "Edit", "Segment"];
+		this.app.interaction.setMode("Place");
 		this.app.displayManager.update();
 	}
 }

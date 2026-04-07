@@ -41,7 +41,7 @@ export class BrushManager {
 
 	projectOnScreen() {
 		const intersections = this.app.screenManager.intersect(
-			this.app.gestures.raycasters.view.ray,
+			this.app.getViewRay(),
 		);
 		const selected = intersections.filter((intersection) => {
 			return (

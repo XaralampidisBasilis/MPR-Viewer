@@ -9,6 +9,34 @@ export class InteractionController {
 		return this.app.display.userData.modes[0];
 	}
 
+	setMode(mode) {
+		const orderedModes = ["Place", "Inspect", "Edit", "Segment"];
+
+		if (!orderedModes.includes(mode) || mode === this.mode) {
+			return;
+		}
+
+		if (this.mode === "Segment") {
+			this.onLeavingSegmentMode();
+		}
+
+		this.app.display.userData.modes = [
+			mode,
+			...orderedModes.filter((entry) => entry !== mode),
+		];
+		this.app.displayManager.updateUI();
+		this.app.desktopControls.syncMode(mode);
+
+		if (mode === "Segment") {
+			this.onEnteringSegmentMode();
+		}
+
+		if (this.app.uiManager?.modeController) {
+			this.app.uiManager.modeState.mode = mode;
+			this.app.uiManager.modeController.updateDisplay();
+		}
+	}
+
 	onVolumeUpload(event) {
 		this.app.utils.loadNIFTI(event.target.files[0]).then((image3D) => {
 			this.app.volumeManager.update(image3D);
@@ -57,6 +85,54 @@ export class InteractionController {
 
 	onKeydown(event) {
 		switch (event.keyCode) {
+			case 49:
+			case 97:
+				this.setMode("Place");
+				break;
+			case 50:
+			case 98:
+				this.setMode("Inspect");
+				break;
+			case 51:
+			case 99:
+				this.setMode("Edit");
+				break;
+			case 52:
+			case 100:
+				this.setMode("Segment");
+				break;
+			case 88:
+				if (this.mode === "Edit" || this.mode === "Segment") {
+					this.onGestureToggleBrush({ end: true });
+				}
+				break;
+			case 67:
+				if (this.mode === "Segment") {
+					this.onGestureClearPoints({ end: true });
+				}
+				break;
+			case 90:
+				if (event.ctrlKey || event.metaKey) {
+					event.preventDefault();
+					if (this.mode === "Place") this.app.displayManager.undo();
+					if (this.mode === "Inspect") this.app.screenManager.undo();
+					if (this.mode === "Edit") this.app.maskManager.undo();
+				}
+				break;
+			case 89:
+				if (event.ctrlKey || event.metaKey) {
+					event.preventDefault();
+					if (this.mode === "Place") this.app.displayManager.redo();
+					if (this.mode === "Inspect") this.app.screenManager.redo();
+					if (this.mode === "Edit") this.app.maskManager.redo();
+				}
+				break;
+			case 71:
+				if (this.mode === "Place") this.app.displayManager.reset();
+				if (this.mode === "Inspect") this.app.screenManager.reset();
+				if (this.mode === "Edit") this.app.maskManager.reset();
+				if (this.mode === "Segment") this.onGestureClearPoints({ end: true });
+				break;
 			case 81:
 				this.app.transformControls.setSpace(
 					this.app.transformControls.space === "local" ? "world" : "local",

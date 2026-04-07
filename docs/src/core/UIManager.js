@@ -8,9 +8,20 @@ export class UIManager {
 	setup() {
 		const gui = new GUI({ closeFolders: true });
 		gui.domElement.classList.add("force-touch-styles");
+		this.gui = gui;
 
 		const folders = [];
 		const controls = [];
+
+		this.modeState = {
+			mode: this.app.interaction.mode,
+		};
+
+		folders[4] = gui.addFolder("Mode");
+		this.modeController = folders[4]
+			.add(this.modeState, "mode", ["Place", "Inspect", "Edit", "Segment"])
+			.name("Current");
+		this.modeController.onChange((mode) => this.app.interaction.setMode(mode));
 
 		controls[0] = [];
 		controls[0][0] = document.getElementById("volumeId");
