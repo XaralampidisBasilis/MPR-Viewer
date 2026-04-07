@@ -4,6 +4,13 @@ This file is a durable quick-reference for the `MPR-Viewer` repository so future
 
 This summary focuses on the project-owned source and on the role of bundled assets. Large third-party or binary files are inventoried here rather than described line by line.
 
+Current architecture note:
+
+- `docs/script.js` is now a tiny bootstrap file
+- The app entry point is `docs/src/Experience.js`
+- Runtime responsibilities are split across `docs/src/core/*` and `docs/src/managers/*`
+- The behavior is still the same AR/volume/mask tool, but the old single-file structure has been replaced with managers around display, screen, model, mask, workers, XR, and interaction
+
 ## 1. What This Repo Is
 
 The repo is a small workspace that serves a browser-based medical volume viewer / AR interaction prototype.
@@ -11,7 +18,7 @@ The repo is a small workspace that serves a browser-based medical volume viewer 
 At runtime it is:
 
 - A single-page app in `docs/index.html`
-- Driven almost entirely by one large module: `docs/script.js`
+- Driven by a central `Experience` object in `docs/src/Experience.js` plus focused managers/controllers
 - Rendered with Three.js and WebXR AR
 - Focused on loading NIFTI volumes and masks, showing 3 orthogonal slice planes plus a volumetric mask render, and editing/segmenting masks with XR gestures
 
@@ -30,7 +37,10 @@ App files:
 - `docs/package.json`: local dev server (`serve`) and formatting/lint tooling
 - `docs/index.html`: static shell, hidden file inputs, popup help, import map, module entry point
 - `docs/style.css`: very small amount of page styling
-- `docs/script.js`: almost all app logic
+- `docs/script.js`: tiny bootstrap that starts the app
+- `docs/src/Experience.js`: central shared app/Experience object
+- `docs/src/core/`: scene setup, XR loop, UI wiring, worker handling, utilities, interaction controller
+- `docs/src/managers/`: focused managers for display, volume, mask, screen, model, brush, selector, and container
 
 Support files in `docs/prm/`:
 
@@ -46,16 +56,15 @@ Support files in `docs/prm/`:
 
 The app has no real build step. It is served as static files and loads most dependencies directly from CDNs.
 
-Main startup path in `docs/script.js`:
+Main startup path now:
 
-1. Load GLSL shader source with `loadShader(...)`
-2. `main()`
-3. `setupObjects()`
-4. `setupScene()`
-5. `setupGui()`
-6. `setupButton()`
-7. `setupWorkers()`
-8. `renderer.setAnimationLoop(updateAnimation)`
+1. `docs/script.js` bootstraps `Experience`
+2. `docs/src/Experience.js` loads shaders
+3. `SceneManager` creates scene objects, renderer, camera, controls, and scene graph
+4. `UIManager` wires the GUI and file/popup controls
+5. `XRManager` wires reticle, gesture input, AR button, and the animation loop
+6. `SegmentationWorkerManager` spins up the MobileSAM worker
+7. Per-frame updates flow through `XRManager.updateAnimation(...)`, then into display/screen/model updates and rendering
 
 Per-frame work:
 
@@ -66,14 +75,14 @@ Per-frame work:
 
 Important implementation style:
 
-- The code is monolithic and stateful
-- Scene objects and plain JS state objects are mixed together
-- Most state lives in `userData`
-- There is heavy coupling between geometry updates, shader uniform updates, and gesture handlers
+- The app still uses shared mutable Three.js state and `userData`, but it is now grouped behind manager classes
+- `Experience` acts as the shared context, similar to a Bruno Simon-style central app object
+- Most feature areas now have a dedicated manager/controller instead of living in one file
+- Geometry updates, shader uniforms, gestures, and workers are still tightly related, but the responsibilities are now separated enough to debug them independently
 
 ## 4. Core Scene Graph And State Objects
 
-The scene graph is built in `docs/script.js` and looks like this conceptually:
+The scene graph is built by `SceneManager` plus the world managers and looks like this conceptually:
 
 - `scene`
 - `camera`
@@ -339,7 +348,7 @@ Detected gestures:
 - `explode`
 - `implode`
 
-App-level mapping in `docs/script.js`:
+App-level mapping now lives mainly in `docs/src/core/InteractionController.js`:
 
 - `swipe left/right`: cycle modes
 - `swipe down/up`: undo/redo depending on current mode
@@ -428,7 +437,7 @@ Important current behavior:
 
 ## 11. Important Helper Utilities
 
-Helpers worth remembering in `docs/script.js`:
+Helpers worth remembering now live mainly in `docs/src/core/AppUtils.js`:
 
 - `localPositionToVoxel(...)`: display-local -> voxel index
 - `worldPositionToVoxel(...)`: world -> voxel index
@@ -487,4 +496,4 @@ When changing segmentation:
 
 If you only remember one thing, remember this:
 
-The app is a single-module Three.js/WebXR medical viewer where `display` is the parent world object, `screen` is the tri-planar slice system, `mask` is the editable segmentation volume, `model` is a shader-based 3D rendering of that mask, `brush` is the 2D editing/segment prompt tool, and `worker.js` runs a MobileSAM-based slice segmentation pipeline that currently works in a limited, mostly axial 2D workflow.
+The app is a modular Three.js/WebXR medical viewer where `display` is the parent world object, `screen` is the tri-planar slice system, `mask` is the editable segmentation volume, `model` is a shader-based 3D rendering of that mask, `brush` is the 2D editing/segment prompt tool, and `worker.js` runs a MobileSAM-based slice segmentation pipeline that currently works in a limited, mostly axial 2D workflow.
