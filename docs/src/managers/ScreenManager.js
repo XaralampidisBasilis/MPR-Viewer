@@ -157,6 +157,49 @@ export class ScreenManager {
 		}
 	}
 
+	getPositionLimit() {
+		const halfSize = this.app.volume.userData.size.clone().multiplyScalar(0.5);
+		const halfVoxel = this.app.volume.userData.voxelSize
+			.clone()
+			.multiplyScalar(0.5);
+
+		return halfSize.sub(halfVoxel).max(new THREE.Vector3());
+	}
+
+	clampLocalPosition(localPosition) {
+		const limit = this.getPositionLimit();
+		return localPosition.clone().clamp(limit.clone().negate(), limit);
+	}
+
+	clampWorldPosition(worldPosition) {
+		this.app.display.updateMatrixWorld(true);
+
+		const localPosition = this.app.display.worldToLocal(worldPosition.clone());
+		const clampedLocalPosition = this.clampLocalPosition(localPosition);
+
+		return this.app.display.localToWorld(clampedLocalPosition);
+	}
+
+	setClampedWorldPosition(worldPosition) {
+		if (!this.app.screen.parent) {
+			return false;
+		}
+
+		const clampedWorldPosition = this.clampWorldPosition(worldPosition);
+		const localPosition = this.app.screen.parent.worldToLocal(
+			clampedWorldPosition.clone(),
+		);
+
+		if (localPosition.distanceToSquared(this.app.screen.position) < 1e-12) {
+			return false;
+		}
+
+		this.app.screen.position.copy(localPosition);
+		this.app.screen.updateMatrix();
+
+		return true;
+	}
+
 	intersect(rayOrOrigin, direction) {
 		const { raycaster, screen, container } = this.app;
 

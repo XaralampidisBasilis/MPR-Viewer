@@ -348,20 +348,24 @@ export class DesktopControls {
 			return;
 		}
 
+		const direction = selected.object.getWorldDirection(new THREE.Vector3());
+		const normal = this.app.camera
+			.getWorldDirection(new THREE.Vector3())
+			.projectOnPlane(direction);
+
+		if (normal.lengthSq() === 0) {
+			return;
+		}
+
 		this.app.screenManager.save();
 		this.app.scene.attach(this.app.screen);
 		this.app.screenManager.update();
 		this.app.screenManager.updateUniformsPlanes();
 
-		const direction = selected.object.userData.plane.normal.clone();
 		const position0 = this.app.screen.position.clone();
-		const normal = this.app.camera
-			.getWorldDirection(new THREE.Vector3())
-			.projectOnPlane(direction)
-			.normalize();
 		const origin = selected.point.clone();
 		const hitPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-			normal,
+			normal.normalize(),
 			origin,
 		);
 
@@ -382,14 +386,22 @@ export class DesktopControls {
 	}
 
 	updateScreenMove() {
-		this.app.camera
-			.getWorldDirection(this.drag.hitPlane.normal)
-			.projectOnPlane(this.drag.direction)
-			.normalize();
+		const hitNormal = this.app.camera
+			.getWorldDirection(new THREE.Vector3())
+			.projectOnPlane(this.drag.direction);
 
-		this.viewRay.intersectPlane(this.drag.hitPlane, this.drag.point);
+		if (hitNormal.lengthSq() === 0) {
+			return;
+		}
 
-		if (!this.drag.point) {
+		this.drag.hitPlane.normal.copy(hitNormal.normalize());
+
+		const hitPoint = this.viewRay.intersectPlane(
+			this.drag.hitPlane,
+			this.drag.point,
+		);
+
+		if (!hitPoint) {
 			return;
 		}
 
@@ -397,9 +409,8 @@ export class DesktopControls {
 			.subVectors(this.drag.point, this.drag.origin)
 			.projectOnVector(this.drag.direction);
 
-		this.app.screen.position
-			.copy(this.drag.position0)
-			.add(this.drag.translation);
+		const worldTarget = this.drag.position0.clone().add(this.drag.translation);
+		this.app.screenManager.setClampedWorldPosition(worldTarget);
 
 		this.app.screenManager.update();
 		this.app.screenManager.updateUniformsPlanes();
@@ -575,18 +586,20 @@ export class DesktopControls {
 	}
 
 	setSegmentSlicePosition(axis, position) {
-		const halfExtent = this.app.mask.userData.size.getComponent(axis) * 0.5;
-		const nextPosition = THREE.MathUtils.clamp(
-			position,
-			-halfExtent,
-			halfExtent,
+		const localTarget = this.app.screen.position.clone();
+		localTarget.setComponent(axis, position);
+
+		const clampedPosition = this.app.screenManager.clampLocalPosition(
+			localTarget,
 		);
 
-		if (nextPosition === this.app.screen.position.getComponent(axis)) {
+		if (
+			clampedPosition.distanceToSquared(this.app.screen.position) < 1e-12
+		) {
 			return false;
 		}
 
-		this.app.screen.position.setComponent(axis, nextPosition);
+		this.app.screen.position.copy(clampedPosition);
 		this.app.screen.updateMatrix();
 		this.app.displayManager.update();
 		this.app.workerManager.runEncodeAll();

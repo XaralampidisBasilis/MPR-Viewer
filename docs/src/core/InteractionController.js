@@ -546,6 +546,9 @@ export class InteractionController {
 		if (event.start) this.app.screenManager.save();
 
 		if (event.current) {
+			this.app.screenManager.setClampedWorldPosition(
+				this.app.screen.getWorldPosition(this.app.shared.position),
+			);
 			this.app.screenManager.update();
 			this.app.screenManager.updateUniformsPlanes();
 			this.app.modelManager.updateUniformsPlanes();
@@ -617,23 +620,30 @@ export class InteractionController {
 				})[0];
 
 			if (data.selected) {
+				const direction = data.selected.object.getWorldDirection(
+					new THREE.Vector3(),
+				);
+				const normal = this.app.camera
+					.getWorldDirection(this.app.shared.direction)
+					.projectOnPlane(direction);
+
+				if (normal.lengthSq() === 0) {
+					data.selected = null;
+					return;
+				}
+
 				this.app.screenManager.save();
 				this.app.scene.attach(this.app.screen);
 				this.app.screenManager.update();
 				this.app.screenManager.updateUniformsPlanes();
 
 				data.translation = new THREE.Vector3();
-				data.direction = data.selected.object.userData.plane.normal.clone();
+				data.direction = direction;
 				data.position = this.app.screen.position.clone();
 				data.position0 = this.app.screen.position.clone();
-
-				const normal = this.app.camera
-					.getWorldDirection(this.app.shared.direction)
-					.projectOnPlane(data.direction)
-					.normalize();
 				data.origin = data.selected.point.clone();
 				data.hitPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-					normal,
+					normal.normalize(),
 					data.origin,
 				);
 				data.point = new THREE.Vector3();
@@ -646,26 +656,33 @@ export class InteractionController {
 		}
 
 		if (event.current && data.selected) {
-			this.app.camera
-				.getWorldDirection(data.hitPlane.normal)
-				.projectOnPlane(data.direction)
-				.normalize();
+			const hitNormal = this.app.camera
+				.getWorldDirection(this.app.shared.direction)
+				.projectOnPlane(data.direction);
 
-			this.app.gestures.raycasters.hand[0].ray.intersectPlane(
+			if (hitNormal.lengthSq() === 0) {
+				return;
+			}
+
+			data.hitPlane.normal.copy(hitNormal.normalize());
+
+			const hitPoint = this.app.gestures.raycasters.hand[0].ray.intersectPlane(
 				data.hitPlane,
 				data.point,
 			);
 
-			if (data.point) {
-				data.translation
-					.subVectors(data.point, data.origin)
-					.projectOnVector(data.direction);
-				data.position.copy(data.position0).add(data.translation);
-				this.app.screen.position.copy(data.position);
-
-				this.app.screenManager.update();
-				this.app.screenManager.updateUniformsPlanes();
+			if (!hitPoint) {
+				return;
 			}
+
+			data.translation
+				.subVectors(data.point, data.origin)
+				.projectOnVector(data.direction);
+			data.position.copy(data.position0).add(data.translation);
+			this.app.screenManager.setClampedWorldPosition(data.position);
+
+			this.app.screenManager.update();
+			this.app.screenManager.updateUniformsPlanes();
 		}
 
 		if (event.end && data.selected) {
