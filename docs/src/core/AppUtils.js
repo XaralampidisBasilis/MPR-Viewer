@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import * as nifti from "nifti-reader-js";
 import { OBB } from "three/addons/math/OBB.js";
-import * as PIXPIPE from "../../prm/pixpipe.esmodule.js";
+import * as PIXPIPE from "../vendor/pixpipe.esmodule.js";
 
 export class AppUtils {
 	constructor(app) {

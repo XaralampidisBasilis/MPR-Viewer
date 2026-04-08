@@ -1,4 +1,4 @@
-import SamWorker from "../../prm/worker.js?worker";
+import SamWorker from "../workers/segmentation.worker.js?worker";
 
 export class SegmentationWorkerManager {
 	constructor(app) {

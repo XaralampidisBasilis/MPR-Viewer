@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { ARButton } from "three/addons/webxr/ARButton.js";
-import { XRGestures } from "../../prm/XRGestures.js";
+import { XRGestures } from "../xr/XRGestures.js";
 
 export class XRManager {
 	constructor(app) {

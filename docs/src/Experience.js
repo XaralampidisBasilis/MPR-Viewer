@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import fragmentModelShader from "../prm/fragment_model.glsl?raw";
-import fragmentScreenShader from "../prm/fragment_screen.glsl?raw";
-import vertexModelShader from "../prm/vertex_model.glsl?raw";
-import vertexScreenShader from "../prm/vertex_screen.glsl?raw";
+import fragmentModelShader from "./shaders/model/fragment.glsl?raw";
+import fragmentScreenShader from "./shaders/screen/fragment.glsl?raw";
+import vertexModelShader from "./shaders/model/vertex.glsl?raw";
+import vertexScreenShader from "./shaders/screen/vertex.glsl?raw";
 import { AppUtils } from "./core/AppUtils.js";
 import { DesktopControls } from "./core/DesktopControls.js";
 import { InteractionController } from "./core/InteractionController.js";

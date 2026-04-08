@@ -1,7 +1,7 @@
 import * as tf from "@tensorflow/tfjs";
 import * as ort from "onnxruntime-web";
-import decoderModelUrl from "./mobilesam.decoder.quant.onnx?url";
-import encoderModelUrl from "./mobilesam.encoder.onnx?url";
+import decoderModelUrl from "../../assets/models/mobilesam.decoder.quant.onnx?url";
+import encoderModelUrl from "../../assets/models/mobilesam.encoder.onnx?url";
 
 ort.env.wasm.wasmPaths =
 	"https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.14.0/";

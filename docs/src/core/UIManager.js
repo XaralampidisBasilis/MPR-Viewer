@@ -222,12 +222,12 @@ export class UIManager {
 		const volumeExampleLink = this.getRequiredElement("volumeFile");
 		const maskExampleLink = this.getRequiredElement("maskFile");
 		volumeExampleLink.href = new URL(
-			"../../prm/lung.nii.gz",
+			"../../assets/examples/lung.nii.gz",
 			import.meta.url,
 		).href;
 		volumeExampleLink.download = "lung.nii.gz";
 		maskExampleLink.href = new URL(
-			"../../prm/lung_mask.nii.gz",
+			"../../assets/examples/lung_mask.nii.gz",
 			import.meta.url,
 		).href;
 		maskExampleLink.download = "lung_mask.nii.gz";

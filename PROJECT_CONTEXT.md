@@ -43,15 +43,15 @@ App files:
 - `docs/src/core/`: scene setup, XR loop, UI wiring, worker handling, utilities, interaction controller
 - `docs/src/managers/`: focused managers for display, volume, mask, screen, model, brush, selector, and container
 
-Support files in `docs/prm/`:
+Support files:
 
-- `docs/prm/XRGestures.js`: custom XR hand/controller gesture detector
-- `docs/prm/worker.js`: TensorFlow.js + ONNXRuntime worker for 2D segmentation prompts
-- `docs/prm/vertex_screen.glsl` and `docs/prm/fragment_screen.glsl`: slice-plane shader pair
-- `docs/prm/vertex_model.glsl` and `docs/prm/fragment_model.glsl`: 3D mask ray-march shader pair
-- `mobilesam*.onnx`: bundled MobileSAM models used by the worker
-- `lung.nii.gz` and `lung_mask.nii.gz`: sample volume/mask assets
-- `pixpipe.esmodule.js`: bundled third-party imaging helper used for NIFTI decoding
+- `docs/src/xr/XRGestures.js`: custom XR hand/controller gesture detector
+- `docs/src/workers/segmentation.worker.js`: TensorFlow.js + ONNXRuntime worker for 2D segmentation prompts
+- `docs/src/shaders/screen/*`: slice-plane shader pair
+- `docs/src/shaders/model/*`: 3D mask ray-march shader pair
+- `docs/assets/models/mobilesam*.onnx`: bundled MobileSAM models used by the worker
+- `docs/assets/examples/lung.nii.gz` and `docs/assets/examples/lung_mask.nii.gz`: sample volume/mask assets
+- `docs/src/vendor/pixpipe.esmodule.js`: bundled third-party imaging helper used for NIFTI decoding
 
 ## 3. Runtime Architecture
 
@@ -335,7 +335,7 @@ Current reality:
 
 ## 7. Gesture Mapping
 
-Gesture detection lives in `docs/prm/XRGestures.js`.
+Gesture detection lives in `docs/src/xr/XRGestures.js`.
 
 Detected gestures:
 
@@ -411,7 +411,7 @@ The model shader pair:
 
 ## 10. Segmentation Worker Flow
 
-Worker source: `docs/prm/worker.js`
+Worker source: `docs/src/workers/segmentation.worker.js`
 
 Dependencies loaded inside the worker:
 
