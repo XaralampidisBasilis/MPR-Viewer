@@ -1,14 +1,10 @@
 import * as tf from "@tensorflow/tfjs";
 import * as ort from "onnxruntime-web";
+import decoderModelUrl from "./mobilesam.decoder.quant.onnx?url";
+import encoderModelUrl from "./mobilesam.encoder.onnx?url";
 
 ort.env.wasm.wasmPaths =
 	"https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.14.0/";
-
-const encoderModelUrl = new URL("./mobilesam.encoder.onnx", import.meta.url);
-const decoderModelUrl = new URL(
-	"./mobilesam.decoder.quant.onnx",
-	import.meta.url,
-);
 
 class SamWorker {
 	constructor() {
@@ -54,8 +50,8 @@ class SamWorker {
 		const start = performance.now();
 
 		ort.env.wasm.numThreads = 1;
-		this.encoder = await ort.InferenceSession.create(encoderModelUrl.href);
-		this.decoder = await ort.InferenceSession.create(decoderModelUrl.href);
+		this.encoder = await ort.InferenceSession.create(encoderModelUrl);
+		this.decoder = await ort.InferenceSession.create(decoderModelUrl);
 
 		self.postMessage({
 			type: "load",
@@ -91,7 +87,7 @@ class SamWorker {
 		const tensor = this.prepareEncoderInput(input);
 
 		try {
-			ort.env.wasm.numThreads = 5;
+			ort.env.wasm.numThreads = 1;
 
 			const feeds = {
 				input_image: new ort.Tensor(tensor.dataSync(), tensor.shape),
@@ -132,7 +128,7 @@ class SamWorker {
 		}
 
 		const start = performance.now();
-		ort.env.wasm.numThreads = 5;
+		ort.env.wasm.numThreads = 1;
 
 		const roundedPoints = input.points.map((point) =>
 			point.map((value) => Math.round(1024 * value)),

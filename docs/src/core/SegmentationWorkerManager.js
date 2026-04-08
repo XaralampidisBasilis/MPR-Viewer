@@ -1,13 +1,13 @@
+import SamWorker from "../../prm/worker.js?worker";
+
 export class SegmentationWorkerManager {
 	constructor(app) {
 		this.app = app;
 	}
 
 	setup() {
-		const workerUrl = new URL("../../prm/worker.js", import.meta.url);
-
 		this.app.workers = Array.from({ length: 1 }, () => {
-			return new Worker(workerUrl, { type: "module" });
+			return new SamWorker();
 		});
 
 		this.app.workers.forEach((worker, id) => {
@@ -305,7 +305,10 @@ export class SegmentationWorkerManager {
 
 	onWorkerError(event) {
 		const workerData = event.currentTarget.userData;
-		const message = event.message || "Unknown worker error";
+		const location = event.filename
+			? ` (${event.filename}:${event.lineno ?? 0}:${event.colno ?? 0})`
+			: "";
+		const message = `${event.message || "Unknown worker error"}${location}`;
 		this.handleWorkerFailure(workerData, new Error(message));
 	}
 
