@@ -16,6 +16,7 @@ export class DesktopControls {
 		this.drag = null;
 		this.pointerIsDown = false;
 		this.pointerDownAltKey = false;
+		this.segmentEncodeDelay = 180;
 		this.modeState = {
 			mode: "Place",
 		};
@@ -357,6 +358,10 @@ export class DesktopControls {
 			return;
 		}
 
+		if (this.mode === "Segment") {
+			this.app.workerManager.cancelScheduledEncodeAll();
+		}
+
 		this.app.screenManager.save();
 		this.app.scene.attach(this.app.screen);
 		this.app.screenManager.update();
@@ -427,7 +432,7 @@ export class DesktopControls {
 		this.app.model.material.needsUpdate = true;
 
 		if (this.mode === "Segment") {
-			this.app.workerManager.runEncodeAll();
+			this.app.workerManager.scheduleEncodeAll(this.segmentEncodeDelay);
 		}
 	}
 
@@ -602,7 +607,7 @@ export class DesktopControls {
 		this.app.screen.position.copy(clampedPosition);
 		this.app.screen.updateMatrix();
 		this.app.displayManager.update();
-		this.app.workerManager.runEncodeAll();
+		this.app.workerManager.scheduleEncodeAll(this.segmentEncodeDelay);
 
 		return true;
 	}

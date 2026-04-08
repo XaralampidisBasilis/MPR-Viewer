@@ -24,6 +24,7 @@ export class SegmentationWorkerManager {
 			loaded: false,
 			encoded: false,
 			decoded: false,
+			encodeScheduleTimer: null,
 			encodeTimer: null,
 			decodeTimer: null,
 			lastError: null,
@@ -94,11 +95,21 @@ export class SegmentationWorkerManager {
 		workerData[key] = null;
 	}
 
+	cancelScheduledEncode(workerData) {
+		if (!workerData?.encodeScheduleTimer) {
+			return;
+		}
+
+		window.clearTimeout(workerData.encodeScheduleTimer);
+		workerData.encodeScheduleTimer = null;
+	}
+
 	resetSliceState(workerData) {
 		if (!workerData) {
 			return;
 		}
 
+		this.cancelScheduledEncode(workerData);
 		this.cancelBufferedAction(workerData, "encodeTimer");
 		this.cancelBufferedAction(workerData, "decodeTimer");
 		this.dismissWorkerStatus("encode", workerData.id);
@@ -118,6 +129,18 @@ export class SegmentationWorkerManager {
 	runEncodeAll() {
 		for (const worker of this.app.workers) {
 			this.runEncode(worker.userData.id);
+		}
+	}
+
+	scheduleEncodeAll(delay = 180) {
+		for (const worker of this.app.workers) {
+			this.scheduleEncode(worker.userData.id, delay);
+		}
+	}
+
+	cancelScheduledEncodeAll() {
+		for (const worker of this.app.workers) {
+			this.cancelScheduledEncode(worker.userData);
 		}
 	}
 
@@ -148,6 +171,7 @@ export class SegmentationWorkerManager {
 		}
 
 		const workerData = worker.userData;
+		this.cancelScheduledEncode(workerData);
 		this.setBrushVisible(false);
 		this.cancelBufferedAction(workerData, "encodeTimer");
 		this.cancelBufferedAction(workerData, "decodeTimer");
@@ -212,6 +236,28 @@ export class SegmentationWorkerManager {
 				});
 			},
 		);
+
+		return true;
+	}
+
+	scheduleEncode(id, delay = 180) {
+		const worker = this.getWorker(id);
+		if (!worker || !this.hasSegmentationSourceData()) {
+			return false;
+		}
+
+		const workerData = worker.userData;
+		this.cancelScheduledEncode(workerData);
+		this.cancelBufferedAction(workerData, "encodeTimer");
+		this.cancelBufferedAction(workerData, "decodeTimer");
+		workerData.encoded = false;
+		workerData.decoded = false;
+		workerData.lastError = null;
+
+		workerData.encodeScheduleTimer = window.setTimeout(() => {
+			workerData.encodeScheduleTimer = null;
+			this.runEncode(id);
+		}, delay);
 
 		return true;
 	}
@@ -388,6 +434,7 @@ export class SegmentationWorkerManager {
 	}
 
 	handleWorkerFailure(workerData, error, stage = "worker") {
+		this.cancelScheduledEncode(workerData);
 		this.cancelBufferedAction(workerData, "encodeTimer");
 		this.cancelBufferedAction(workerData, "decodeTimer");
 		this.setBrushVisible(true);

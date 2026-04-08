@@ -389,7 +389,7 @@ export class InteractionController {
 			if (!event.userData.flag) this.onGestureMoveDisplay(event);
 
 			if (event.userData.flag && event.end) {
-				this.app.workerManager.runEncodeAll();
+				this.app.workerManager.scheduleEncodeAll();
 			}
 		}
 
