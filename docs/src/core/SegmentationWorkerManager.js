@@ -47,6 +47,30 @@ export class SegmentationWorkerManager {
 		return this.app.workers?.[id] ?? null;
 	}
 
+	getWorkerStatusId(stage, id) {
+		return `segmentation-${stage}-${id}`;
+	}
+
+	getWorkerFailureTitle(stage) {
+		if (stage === "load") {
+			return "Segmentation model failed";
+		}
+
+		if (stage === "encode") {
+			return "Embedding failed";
+		}
+
+		if (stage === "decode") {
+			return "Mask generation failed";
+		}
+
+		return "Segmentation worker failed";
+	}
+
+	dismissWorkerStatus(stage, id) {
+		this.app.uiManager?.dismissStatus(this.getWorkerStatusId(stage, id));
+	}
+
 	hasSegmentationSourceData() {
 		return Boolean(
 			this.app.volume?.userData?.data0 &&
@@ -77,6 +101,8 @@ export class SegmentationWorkerManager {
 
 		this.cancelBufferedAction(workerData, "encodeTimer");
 		this.cancelBufferedAction(workerData, "decodeTimer");
+		this.dismissWorkerStatus("encode", workerData.id);
+		this.dismissWorkerStatus("decode", workerData.id);
 		workerData.encoded = false;
 		workerData.decoded = false;
 		workerData.lastError = null;
@@ -101,6 +127,11 @@ export class SegmentationWorkerManager {
 			return false;
 		}
 
+		this.app.uiManager?.startStatus(
+			this.getWorkerStatusId("load", id),
+			"Loading segmentation model",
+			`Worker ${id + 1} is loading the encoder and decoder`,
+		);
 		console.log(`Worker ${id}: Loading models`);
 		worker.postMessage({
 			type: "load",
@@ -123,6 +154,13 @@ export class SegmentationWorkerManager {
 		workerData.encoded = false;
 		workerData.decoded = false;
 		workerData.lastError = null;
+		this.app.uiManager?.startStatus(
+			this.getWorkerStatusId("encode", id),
+			"Preparing slice embedding",
+			workerData.loaded
+				? "Collecting the current slice for prompt segmentation"
+				: "Waiting for the segmentation model to finish loading",
+		);
 
 		console.log(`Worker ${id}: Buffered encoding`);
 
@@ -130,6 +168,11 @@ export class SegmentationWorkerManager {
 			() => workerData.loaded && this.hasSegmentationSourceData(),
 			() => {
 				workerData.encodeTimer = null;
+				this.app.uiManager?.updateStatus(
+					this.getWorkerStatusId("encode", id),
+					"Computing slice embedding",
+					"Running the segmentation encoder on the active slice",
+				);
 				console.log(`Worker ${id}: Started encoding`);
 
 				const { slice } = workerData;
@@ -145,6 +188,7 @@ export class SegmentationWorkerManager {
 				);
 
 				if (slice.data.length === 0) {
+					this.dismissWorkerStatus("encode", id);
 					this.setBrushVisible(true);
 					return;
 				}
@@ -186,6 +230,11 @@ export class SegmentationWorkerManager {
 		this.cancelBufferedAction(workerData, "decodeTimer");
 		workerData.decoded = false;
 		workerData.lastError = null;
+		this.app.uiManager?.startStatus(
+			this.getWorkerStatusId("decode", id),
+			"Generating mask",
+			"Queueing prompt inference for the active slice",
+		);
 
 		console.log(`Worker ${id}: Buffered decoding`);
 
@@ -194,6 +243,11 @@ export class SegmentationWorkerManager {
 			() => {
 				workerData.decodeTimer = null;
 				const { slice } = workerData;
+				this.app.uiManager?.updateStatus(
+					this.getWorkerStatusId("decode", id),
+					"Generating mask",
+					"Running prompt inference on the active slice",
+				);
 
 				worker.postMessage({
 					type: "decode",
@@ -235,6 +289,11 @@ export class SegmentationWorkerManager {
 		console.log(
 			`Worker ${workerData.id}: Loading models took ${event.data.output.time} seconds`,
 		);
+		this.app.uiManager?.completeStatus(
+			this.getWorkerStatusId("load", workerData.id),
+			"Segmentation model ready",
+			"Prompt-based segmentation is ready to use.",
+		);
 	}
 
 	onEncoded(event) {
@@ -247,6 +306,12 @@ export class SegmentationWorkerManager {
 
 		console.log(
 			`Worker ${workerData.id}: Computing image embedding took ${event.data.output.time} seconds`,
+		);
+		this.app.uiManager?.completeStatus(
+			this.getWorkerStatusId("encode", workerData.id),
+			"Embedding ready",
+			"You can place prompt points on the current slice.",
+			2200,
 		);
 	}
 
@@ -266,6 +331,12 @@ export class SegmentationWorkerManager {
 
 		console.log(
 			`Worker ${workerData.id}: Generating masks took ${event.data.output.time} seconds`,
+		);
+		this.app.uiManager?.completeStatus(
+			this.getWorkerStatusId("decode", workerData.id),
+			"Mask updated",
+			"The generated mask was applied to the current slice.",
+			1700,
 		);
 
 		const count = Math.min(
@@ -300,7 +371,7 @@ export class SegmentationWorkerManager {
 		const workerData = event.currentTarget.userData;
 		const stage = event.data.output?.stage ?? "worker";
 		const message = event.data.output?.message ?? "Unknown worker error";
-		this.handleWorkerFailure(workerData, new Error(`[${stage}] ${message}`));
+		this.handleWorkerFailure(workerData, new Error(`[${stage}] ${message}`), stage);
 	}
 
 	onWorkerError(event) {
@@ -309,16 +380,31 @@ export class SegmentationWorkerManager {
 			? ` (${event.filename}:${event.lineno ?? 0}:${event.colno ?? 0})`
 			: "";
 		const message = `${event.message || "Unknown worker error"}${location}`;
-		this.handleWorkerFailure(workerData, new Error(message));
+		this.handleWorkerFailure(
+			workerData,
+			new Error(message),
+			workerData.loaded ? "worker" : "load",
+		);
 	}
 
-	handleWorkerFailure(workerData, error) {
+	handleWorkerFailure(workerData, error, stage = "worker") {
 		this.cancelBufferedAction(workerData, "encodeTimer");
 		this.cancelBufferedAction(workerData, "decodeTimer");
 		this.setBrushVisible(true);
 		workerData.encoded = false;
 		workerData.decoded = false;
 		workerData.lastError = error;
+
+		if (stage === "worker") {
+			this.dismissWorkerStatus("encode", workerData.id);
+			this.dismissWorkerStatus("decode", workerData.id);
+		}
+
+		this.app.uiManager?.failStatus(
+			this.getWorkerStatusId(stage, workerData.id),
+			this.getWorkerFailureTitle(stage),
+			error.message,
+		);
 		console.error(`Worker ${workerData.id} failed`, error);
 	}
 }

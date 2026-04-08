@@ -41,27 +41,75 @@ export class InteractionController {
 		console.error(`${context} failed`, error);
 	}
 
+	getErrorMessage(error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+
+	async showBusyStatus(id, title, message) {
+		if (!this.app.uiManager) {
+			return;
+		}
+
+		this.app.uiManager.updateStatus(id, title, message);
+		await this.app.uiManager.flushStatusFrame();
+	}
+
 	async onVolumeUpload(event) {
 		const input = event.target;
 		const file = input.files?.[0];
+		const statusId = "volume-load";
+		const hadMask = Boolean(this.app.mask.userData.image3D);
+
+		if (!file) {
+			input.value = "";
+			return;
+		}
 
 		try {
+			this.app.uiManager?.startStatus(
+				statusId,
+				"Loading volume",
+				`Reading ${file.name}`,
+			);
+
 			const [image3D, raw] = await Promise.all([
 				this.app.utils.loadNIFTI(file),
 				this.app.utils.loadRawNIFTI(file),
 			]);
+			await this.showBusyStatus(
+				statusId,
+				"Applying volume",
+				"Creating textures and preparing the scene data",
+			);
 			this.app.volumeManager.update(image3D);
 			this.app.volume.userData.raw = raw;
 			this.app.volume.userData.fileName = file.name;
 
-			if (!this.app.mask.userData.image3D) {
+			if (!hadMask) {
 				this.app.maskManager.updateFromVolume();
 				this.app.mask.userData.raw = raw;
 				this.app.mask.userData.fileName = file.name;
 			}
 
+			await this.showBusyStatus(
+				statusId,
+				"Building model",
+				"Updating slice views and the 3D model",
+			);
 			this.app.refreshWorldFromData();
+			this.app.uiManager?.completeStatus(
+				statusId,
+				"Volume ready",
+				hadMask
+					? "The volume, slices, and model are ready."
+					: "The volume is ready and a blank mask was created from it.",
+			);
 		} catch (error) {
+			this.app.uiManager?.failStatus(
+				statusId,
+				"Volume load failed",
+				this.getErrorMessage(error),
+			);
 			this.reportError("Volume upload", error);
 		} finally {
 			input.value = "";
@@ -71,23 +119,58 @@ export class InteractionController {
 	async onMaskUpload(event) {
 		const input = event.target;
 		const file = input.files?.[0];
+		const statusId = "mask-load";
+		const hadVolume = Boolean(this.app.volume.userData.image3D);
+
+		if (!file) {
+			input.value = "";
+			return;
+		}
 
 		try {
+			this.app.uiManager?.startStatus(
+				statusId,
+				"Loading mask",
+				`Reading ${file.name}`,
+			);
+
 			const [image3D, raw] = await Promise.all([
 				this.app.utils.loadNIFTI(file),
 				this.app.utils.loadRawNIFTI(file),
 			]);
+			await this.showBusyStatus(
+				statusId,
+				"Applying mask",
+				"Creating mask textures and syncing the scene data",
+			);
 
 			this.app.maskManager.update(image3D);
 			this.app.mask.userData.raw = raw;
 			this.app.mask.userData.fileName = file.name;
 
-			if (!this.app.volume.userData.image3D) {
+			if (!hadVolume) {
 				this.app.volumeManager.updateFromMask();
 			}
 
+			await this.showBusyStatus(
+				statusId,
+				"Building model",
+				"Updating slice views and the 3D model",
+			);
 			this.app.refreshWorldFromData();
+			this.app.uiManager?.completeStatus(
+				statusId,
+				"Mask ready",
+				hadVolume
+					? "The edited mask is ready in both the slices and the 3D model."
+					: "The mask is ready and a matching volume was derived from it.",
+			);
 		} catch (error) {
+			this.app.uiManager?.failStatus(
+				statusId,
+				"Mask load failed",
+				this.getErrorMessage(error),
+			);
 			this.reportError("Mask upload", error);
 		} finally {
 			input.value = "";
