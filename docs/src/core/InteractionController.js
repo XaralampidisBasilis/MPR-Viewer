@@ -46,11 +46,18 @@ export class InteractionController {
 		const file = input.files?.[0];
 
 		try {
-			const image3D = await this.app.utils.loadNIFTI(file);
+			const [image3D, raw] = await Promise.all([
+				this.app.utils.loadNIFTI(file),
+				this.app.utils.loadRawNIFTI(file),
+			]);
 			this.app.volumeManager.update(image3D);
+			this.app.volume.userData.raw = raw;
+			this.app.volume.userData.fileName = file.name;
 
 			if (!this.app.mask.userData.image3D) {
 				this.app.maskManager.updateFromVolume();
+				this.app.mask.userData.raw = raw;
+				this.app.mask.userData.fileName = file.name;
 			}
 
 			this.app.refreshWorldFromData();
@@ -73,6 +80,7 @@ export class InteractionController {
 
 			this.app.maskManager.update(image3D);
 			this.app.mask.userData.raw = raw;
+			this.app.mask.userData.fileName = file.name;
 
 			if (!this.app.volume.userData.image3D) {
 				this.app.volumeManager.updateFromMask();
@@ -87,19 +95,30 @@ export class InteractionController {
 	}
 
 	onMaskDownload() {
-		if (!this.app.mask.userData.raw || !this.app.mask.userData.texture?.image) {
+		const imageData = this.app.mask.userData.texture?.image?.data;
+		const image3D = this.app.mask.userData.image3D;
+		const templateRaw =
+			this.app.mask.userData.raw ?? this.app.volume.userData.raw ?? null;
+
+		if (!imageData || (!templateRaw && !image3D)) {
 			return;
 		}
 
-		const header = this.app.mask.userData.raw.slice(0, 352);
-		const headerTemp = new Uint16Array(header);
-		headerTemp[35] = 2;
+		try {
+			const fileName = this.app.utils.getMaskDownloadFileName(
+				this.app.mask.userData.fileName,
+				this.app.volume.userData.fileName,
+			);
+			const buffer = this.app.utils.buildMaskDownloadBuffer({
+				imageData,
+				image3D,
+				templateRaw,
+			});
 
-		const image = this.app.mask.userData.texture.image.data;
-		this.app.utils.saveData(
-			[headerTemp, new Uint16Array(image.buffer, 0, image.length)],
-			"mask.nii",
-		);
+			this.app.utils.saveData([buffer], fileName);
+		} catch (error) {
+			this.reportError("Mask download", error);
+		}
 	}
 
 	onResize() {

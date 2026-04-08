@@ -75,6 +75,148 @@ export class AppUtils {
 		});
 	}
 
+	getTypedArrayMax(array) {
+		let maxValue = 0;
+
+		for (const value of array) {
+			if (value > maxValue) {
+				maxValue = value;
+			}
+		}
+
+		return maxValue;
+	}
+
+	getMaskDownloadFileName(maskFileName, volumeFileName) {
+		const templateName = maskFileName || volumeFileName || "mask";
+		const baseName = templateName.replace(/\.nii(\.gz)?$/iu, "");
+
+		if (maskFileName) {
+			return `${baseName}-edited.nii`;
+		}
+
+		if (volumeFileName) {
+			return `${baseName}-mask.nii`;
+		}
+
+		return "mask-edited.nii";
+	}
+
+	buildMaskDownloadBuffer({ imageData, image3D, templateRaw }) {
+		const data =
+			imageData instanceof Uint8Array
+				? imageData
+				: new Uint8Array(
+						imageData.buffer,
+						imageData.byteOffset,
+						imageData.byteLength,
+					);
+
+		if (templateRaw && nifti.isNIFTI(templateRaw)) {
+			return this.buildNiftiBufferFromTemplate(templateRaw, data);
+		}
+
+		return this.buildMinimalMaskNiftiBuffer(image3D, data);
+	}
+
+	buildNiftiBufferFromTemplate(templateRaw, imageData) {
+		const header = nifti.readHeader(templateRaw);
+
+		if (!header) {
+			throw new Error("Unable to read the NIfTI header used for export");
+		}
+
+		const voxOffset = Math.max(
+			Math.round(header.vox_offset),
+			header instanceof nifti.NIFTI2 ? 544 : 352,
+		);
+		const output = new Uint8Array(voxOffset + imageData.byteLength);
+		const prefixLength = Math.min(voxOffset, templateRaw.byteLength);
+
+		output.set(new Uint8Array(templateRaw, 0, prefixLength));
+
+		const view = new DataView(output.buffer);
+		const littleEndian = header.littleEndian;
+		const maxValue = this.getTypedArrayMax(imageData);
+
+		if (header instanceof nifti.NIFTI2) {
+			view.setInt16(12, nifti.NIFTI2.TYPE_UINT8, littleEndian);
+			view.setInt16(14, 8, littleEndian);
+			view.setFloat64(176, 1, littleEndian);
+			view.setFloat64(184, 0, littleEndian);
+			view.setFloat64(192, maxValue, littleEndian);
+			view.setFloat64(200, 0, littleEndian);
+		} else {
+			view.setInt16(70, nifti.NIFTI1.TYPE_UINT8, littleEndian);
+			view.setInt16(72, 8, littleEndian);
+			view.setFloat32(112, 1, littleEndian);
+			view.setFloat32(116, 0, littleEndian);
+			view.setFloat32(124, maxValue, littleEndian);
+			view.setFloat32(128, 0, littleEndian);
+		}
+
+		output.set(imageData, voxOffset);
+
+		return output.buffer;
+	}
+
+	buildMinimalMaskNiftiBuffer(image3D, imageData) {
+		if (!image3D) {
+			throw new Error("No mask metadata is available for export");
+		}
+
+		const dimensions = image3D.getMetadata("dimensions");
+		const getDimension = (axis) =>
+			dimensions[image3D.getDimensionIndexFromName(axis)];
+		const xDimension = getDimension("x");
+		const yDimension = getDimension("y");
+		const zDimension = getDimension("z");
+		const voxOffset = 352;
+		const buffer = new ArrayBuffer(voxOffset + imageData.byteLength);
+		const bytes = new Uint8Array(buffer);
+		const view = new DataView(buffer);
+		const maxValue = this.getTypedArrayMax(imageData);
+		const encoder = new TextEncoder();
+		const xStep = Math.abs(xDimension?.step || 1);
+		const yStep = Math.abs(yDimension?.step || 1);
+		const zStep = Math.abs(zDimension?.step || 1);
+
+		view.setInt32(0, 348, true);
+		view.setUint8(39, 0);
+		view.setInt16(40, 3, true);
+		view.setInt16(42, image3D.getDimensionSize("x"), true);
+		view.setInt16(44, image3D.getDimensionSize("y"), true);
+		view.setInt16(46, image3D.getDimensionSize("z"), true);
+		view.setInt16(48, 1, true);
+		view.setInt16(50, 1, true);
+		view.setInt16(52, 1, true);
+		view.setInt16(54, 1, true);
+		view.setInt16(70, nifti.NIFTI1.TYPE_UINT8, true);
+		view.setInt16(72, 8, true);
+		view.setFloat32(76, 1, true);
+		view.setFloat32(80, xStep, true);
+		view.setFloat32(84, yStep, true);
+		view.setFloat32(88, zStep, true);
+		view.setFloat32(92, 1, true);
+		view.setFloat32(108, voxOffset, true);
+		view.setFloat32(112, 1, true);
+		view.setFloat32(116, 0, true);
+		view.setUint8(123, 2);
+		view.setFloat32(124, maxValue, true);
+		view.setFloat32(128, 0, true);
+		view.setInt16(252, 1, true);
+		view.setInt16(254, 1, true);
+		view.setFloat32(280, xStep, true);
+		view.setFloat32(296, yStep, true);
+		view.setFloat32(312, zStep, true);
+		bytes.set(encoder.encode("mask"), 148);
+		bytes.set(Uint8Array.from([0, 0, 0, 0]), 348);
+		bytes.set(Uint8Array.from([0x6e, 0x2b, 0x31, 0x00]), 344);
+		bytes.set(imageData, voxOffset);
+
+		return buffer;
+	}
+
 	saveData(data, fileName) {
 		const blob = new Blob(data, { type: "application/octet-stream" });
 		const url = window.URL.createObjectURL(blob);
