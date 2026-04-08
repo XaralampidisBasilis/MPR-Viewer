@@ -232,7 +232,9 @@ export class DesktopControls {
 		this.updateViewRay();
 
 		if (this.mode === "Inspect") {
-			const selected = this.getHoveredScreenIntersection(true);
+			// Allow double-click to bring a hidden plane back by raycasting
+			// against all monitors instead of only the currently visible ones.
+			const selected = this.getHoveredScreenIntersection(false);
 
 			if (selected) {
 				this.app.screenManager.save();
