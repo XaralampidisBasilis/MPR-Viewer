@@ -167,41 +167,69 @@ export class InteractionController {
 		}
 	}
 
-	async loadExampleVolume(url, fileName) {
-		try {
-			this.app.uiManager?.startStatus(
-				"volume-load",
-				"Loading volume example",
-				`Fetching ${fileName}`,
-			);
-			const file = await this.app.utils.loadBundledFile(url, fileName);
-			await this.loadVolumeFile(file);
-		} catch (error) {
-			this.app.uiManager?.failStatus(
-				"volume-load",
-				"Volume example failed",
-				this.getErrorMessage(error),
-			);
-			this.reportError("Volume example", error);
-		}
-	}
+	async loadExampleDataset({
+		volumeUrl,
+		volumeFileName,
+		maskUrl,
+		maskFileName,
+	}) {
+		const statusId = "example-load";
 
-	async loadExampleMask(url, fileName) {
 		try {
 			this.app.uiManager?.startStatus(
-				"mask-load",
-				"Loading mask example",
-				`Fetching ${fileName}`,
+				statusId,
+				"Loading example dataset",
+				`Fetching ${volumeFileName} and ${maskFileName}`,
 			);
-			const file = await this.app.utils.loadBundledFile(url, fileName);
-			await this.loadMaskFile(file);
+
+			const [volumeFile, maskFile] = await Promise.all([
+				this.app.utils.loadBundledFile(volumeUrl, volumeFileName),
+				this.app.utils.loadBundledFile(maskUrl, maskFileName),
+			]);
+			const [[volumeImage3D, volumeRaw], [maskImage3D, maskRaw]] =
+				await Promise.all([
+					Promise.all([
+						this.app.utils.loadNIFTI(volumeFile),
+						this.app.utils.loadRawNIFTI(volumeFile),
+					]),
+					Promise.all([
+						this.app.utils.loadNIFTI(maskFile),
+						this.app.utils.loadRawNIFTI(maskFile),
+					]),
+				]);
+
+			await this.showBusyStatus(
+				statusId,
+				"Applying example dataset",
+				"Creating the volume and mask textures",
+			);
+
+			this.app.volumeManager.update(volumeImage3D);
+			this.app.volume.userData.raw = volumeRaw;
+			this.app.volume.userData.fileName = volumeFile.name;
+			this.app.maskManager.update(maskImage3D);
+			this.app.mask.userData.raw = maskRaw;
+			this.app.mask.userData.fileName = maskFile.name;
+
+			await this.showBusyStatus(
+				statusId,
+				"Building model",
+				"Updating slice views and the 3D model",
+			);
+
+			this.app.refreshWorldFromData();
+			this.app.uiManager?.completeStatus(
+				statusId,
+				"Example dataset ready",
+				"The sample volume and mask are loaded and ready to inspect.",
+			);
 		} catch (error) {
 			this.app.uiManager?.failStatus(
-				"mask-load",
-				"Mask example failed",
+				statusId,
+				"Example dataset failed",
 				this.getErrorMessage(error),
 			);
-			this.reportError("Mask example", error);
+			this.reportError("Example dataset", error);
 		}
 	}
 

@@ -232,26 +232,16 @@ export class UIManager {
 			.add(
 				{
 					action: () =>
-						this.app.interaction.loadExampleVolume(
-							volumeExampleUrl,
-							"ct_train_1002_image.nii.gz",
-						),
+						this.app.interaction.loadExampleDataset({
+							volumeUrl: volumeExampleUrl,
+							volumeFileName: "ct_train_1002_image.nii.gz",
+							maskUrl: maskExampleUrl,
+							maskFileName: "ct_train_1002_label.nii.gz",
+						}),
 				},
 				"action",
 			)
-			.name("Volume");
-		examplesFolder
-			.add(
-				{
-					action: () =>
-						this.app.interaction.loadExampleMask(
-							maskExampleUrl,
-							"ct_train_1002_label.nii.gz",
-						),
-				},
-				"action",
-			)
-			.name("Mask");
+			.name("Load");
 
 		this.popupWindow = this.getRequiredElement("popup-window");
 		this.popupBackdrop = this.getRequiredElement("popup-backdrop");

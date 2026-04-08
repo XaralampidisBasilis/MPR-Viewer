@@ -172,11 +172,11 @@ The app was refactored from a single monolithic script into a manager-based stru
 
 Key runtime modules:
 
-- `core/SceneManager.js`: renderer, camera, scene graph
-- `core/UIManager.js`: GUI and help modal wiring
-- `core/XRManager.js`: AR button, XR update loop, hit testing
 - `core/DesktopControls.js`: browser-only mouse controls
-- `core/SegmentationWorkerManager.js`: worker lifecycle and segmentation orchestration
+- `managers/SceneManager.js`: renderer, camera, scene graph
+- `managers/UIManager.js`: GUI and help modal wiring
+- `managers/XRManager.js`: AR button, XR update loop, hit testing
+- `managers/SegmentationWorkerManager.js`: worker lifecycle and segmentation orchestration
 - `managers/ScreenManager.js`: slice planes and slice uniforms
 - `managers/ModelManager.js`: 3D mask rendering
 - `managers/MaskManager.js`: editable mask texture state

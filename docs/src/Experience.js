@@ -6,18 +6,18 @@ import vertexScreenShader from "./shaders/screen/vertex.glsl?raw";
 import { AppUtils } from "./core/AppUtils.js";
 import { DesktopControls } from "./core/DesktopControls.js";
 import { InteractionController } from "./core/InteractionController.js";
-import { SceneManager } from "./core/SceneManager.js";
-import { SegmentationWorkerManager } from "./core/SegmentationWorkerManager.js";
-import { UIManager } from "./core/UIManager.js";
-import { XRManager } from "./core/XRManager.js";
 import { BrushManager } from "./managers/BrushManager.js";
 import { ContainerManager } from "./managers/ContainerManager.js";
 import { DisplayManager } from "./managers/DisplayManager.js";
 import { MaskManager } from "./managers/MaskManager.js";
 import { ModelManager } from "./managers/ModelManager.js";
 import { ScreenManager } from "./managers/ScreenManager.js";
+import { SceneManager } from "./managers/SceneManager.js";
 import { Selector3DManager } from "./managers/Selector3DManager.js";
+import { SegmentationWorkerManager } from "./managers/SegmentationWorkerManager.js";
+import { UIManager } from "./managers/UIManager.js";
 import { VolumeManager } from "./managers/VolumeManager.js";
+import { XRManager } from "./managers/XRManager.js";
 
 export class Experience {
 	static async bootstrap() {
