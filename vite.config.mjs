@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-	root: "docs",
+	root: "app",
 	base: "./",
 	publicDir: false,
 	assetsInclude: ["**/*.nii.gz", "**/*.onnx"],
@@ -14,7 +14,7 @@ export default defineConfig({
 		port: 4173,
 	},
 	build: {
-		outDir: "../dist",
+		outDir: "../docs",
 		emptyOutDir: true,
 	},
 });

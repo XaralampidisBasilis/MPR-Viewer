@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Augmented Reality Tool</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+    <a
+        class="project-logo"
+        href="https://www.ai4hf.com/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Visit the AI4HF website"
+    >
+        <img src="ai4hf-logo.svg" alt="AI4HF" class="project-logo-image">
+    </a>
+    <!-- instructions -->
+    <a href="#" id="popup-link" style="display:none"></a>
+    <div id="popup-backdrop"></div>
+    <div id="popup-window" aria-labelledby="popup-title" aria-modal="true" role="dialog">
+        <div class="help-shell">
+            <header class="help-hero">
+                <div class="help-badge-row">
+                    <span class="help-badge">Viewer Guide</span>
+                    <span class="help-badge help-badge-soft">Desktop First</span>
+                    <span class="help-badge help-badge-soft">XR Ready</span>
+                </div>
+                <div class="help-hero-main">
+                    <div>
+                        <h1 id="popup-title">How to use the viewer</h1>
+                        <p class="help-subtitle">
+                            Load a volume, choose a mode, and interact with the slices or mask using the mouse.
+                            XR controls are still available, but the browser workflow is now the easiest way to work.
+                        </p>
+                    </div>
+                    <button type="button" id="close-button" class="help-close" aria-label="Close guide">Close</button>
+                </div>
+            </header>
+
+            <section class="help-section">
+                <div class="help-section-header">
+                    <h2>Quick Start</h2>
+                    <p>The shortest path from opening the app to editing data.</p>
+                </div>
+                <div class="help-steps">
+                    <article class="help-step">
+                        <span class="help-step-number">1</span>
+                        <h3>Load data</h3>
+                        <p>Use the <strong>Volume</strong> and <strong>Mask</strong> folders in the GUI, or load the example files first.</p>
+                    </article>
+                    <article class="help-step">
+                        <span class="help-step-number">2</span>
+                        <h3>Pick a mode</h3>
+                        <p>Switch modes with <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> or from the <strong>Mode</strong> folder in the GUI.</p>
+                    </article>
+                    <article class="help-step">
+                        <span class="help-step-number">3</span>
+                        <h3>Work with the mouse</h3>
+                        <p>Use left mouse for tool actions, right drag to orbit the camera, and the wheel to zoom.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <div class="help-section-header">
+                    <h2>Desktop Essentials</h2>
+                    <p>These shortcuts work across the browser workflow.</p>
+                </div>
+                <div class="shortcut-grid">
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>
+                        </div>
+                        <p>Switch to <strong>Place</strong>, <strong>Inspect</strong>, <strong>Edit</strong>, or <strong>Segment</strong>.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>Right Drag</kbd>
+                        </div>
+                        <p>Orbit the camera around the scene.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>Wheel</kbd>
+                        </div>
+                        <p>Zoom the camera in or out.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>Ctrl</kbd><kbd>Z</kbd>
+                        </div>
+                        <p>Undo in the active mode.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>Ctrl</kbd><kbd>Y</kbd>
+                        </div>
+                        <p>Redo in the active mode.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>X</kbd>
+                        </div>
+                        <p>Toggle brush or prompt label between add and subtract.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>C</kbd>
+                        </div>
+                        <p>Clear all prompt points in <strong>Segment</strong>.</p>
+                    </div>
+                    <div class="shortcut-card">
+                        <div class="shortcut-keys">
+                            <kbd>G</kbd>
+                        </div>
+                        <p>Reset the current mode state.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="help-section">
+                <div class="help-section-header">
+                    <h2>Modes</h2>
+                    <p>Each mode focuses on one kind of task.</p>
+                </div>
+                <div class="mode-grid">
+                    <article class="mode-card">
+                        <div class="mode-card-top">
+                            <span class="mode-tag">1</span>
+                            <h3>Place</h3>
+                        </div>
+                        <p class="mode-summary">Position the volume assembly in the scene.</p>
+                        <ul class="mode-list">
+                            <li><strong>Left drag:</strong> move the volume</li>
+                            <li><strong>Alt + left drag:</strong> rotate the volume</li>
+                            <li><strong>Shift + wheel:</strong> scale the volume</li>
+                        </ul>
+                    </article>
+                    <article class="mode-card">
+                        <div class="mode-card-top">
+                            <span class="mode-tag">2</span>
+                            <h3>Inspect</h3>
+                        </div>
+                        <p class="mode-summary">Navigate and reposition the slice planes.</p>
+                        <ul class="mode-list">
+                            <li><strong>Left drag on a slice:</strong> move the selected plane</li>
+                            <li><strong>Alt + left drag:</strong> rotate the slice stack</li>
+                            <li><strong>Double click:</strong> hide or reveal a plane</li>
+                        </ul>
+                    </article>
+                    <article class="mode-card">
+                        <div class="mode-card-top">
+                            <span class="mode-tag">3</span>
+                            <h3>Edit</h3>
+                        </div>
+                        <p class="mode-summary">Paint directly into the mask on the active slice.</p>
+                        <ul class="mode-list">
+                            <li><strong>Left drag:</strong> paint mask values</li>
+                            <li><strong>Shift + wheel:</strong> resize the brush</li>
+                            <li><strong>Double click or X:</strong> toggle add/subtract</li>
+                        </ul>
+                    </article>
+                    <article class="mode-card">
+                        <div class="mode-card-top">
+                            <span class="mode-tag">4</span>
+                            <h3>Segment</h3>
+                        </div>
+                        <p class="mode-summary">Place prompts and let the model propose a mask.</p>
+                        <ul class="mode-list">
+                            <li><strong>Left click:</strong> add a prompt point</li>
+                            <li><strong>Alt + left drag:</strong> move the slice like Inspect mode</li>
+                            <li><strong>Alt + wheel:</strong> step through slices with fine control</li>
+                            <li><strong>Shift + wheel:</strong> resize the prompt brush</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section class="help-section help-section-split">
+                <article class="help-panel">
+                    <div class="help-section-header">
+                        <h2>Desktop Workflow</h2>
+                        <p>The recommended way to use the tool in the browser.</p>
+                    </div>
+                    <ul class="help-detail-list">
+                        <li>Load a sample volume first if you want to learn the interface quickly.</li>
+                        <li>Use <strong>Inspect</strong> to line up the slice you care about before editing or segmenting.</li>
+                        <li>Use <strong>Edit</strong> when you want direct manual control over the mask.</li>
+                        <li>Use <strong>Segment</strong> when placing positive or negative prompt points is faster than painting.</li>
+                    </ul>
+                </article>
+                <article class="help-panel">
+                    <div class="help-section-header">
+                        <h2>XR Gestures</h2>
+                        <p>If you open the tool in AR, the original gesture workflow is still available.</p>
+                    </div>
+                    <ul class="help-detail-list">
+                        <li><strong>Swipe left/right:</strong> change mode</li>
+                        <li><strong>Swipe down/up:</strong> undo or redo</li>
+                        <li><strong>Double tap:</strong> context action for the current mode</li>
+                        <li><strong>Hold / pan / pinch / twist:</strong> manipulate the active object for the current mode</li>
+                    </ul>
+                </article>
+            </section>
+        </div>
+    </div>
+    <!-- lil-gui buttons -->
+    <input type="file" id="volumeId" style="display:none">
+    <input type="file" id="maskId" style="display:none">
+    <a id="volumeFile" class="filelinks" style="display:none" href="#"><i class="fas fa-download"></i></a>
+    <a id="maskFile" class="filelinks" style="display:none" href="#"><i class="fas fa-download"></i></a>
+    <div id="overlay-content"></div>
+    <!-- main script -->
+    <script type="module" src="script.js">
+    </script>
+</body>

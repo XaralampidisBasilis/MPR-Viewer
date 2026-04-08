@@ -6,10 +6,10 @@ This summary focuses on the project-owned source and on the role of bundled asse
 
 Current architecture note:
 
-- `docs/script.js` is now a tiny bootstrap file
-- The app entry point is `docs/src/Experience.js`
-- Runtime responsibilities are split across `docs/src/core/*` and `docs/src/managers/*`
-- Desktop/browser interaction now also exists through `docs/src/core/DesktopControls.js`
+- `app/script.js` is now a tiny bootstrap file
+- The app entry point is `app/src/Experience.js`
+- Runtime responsibilities are split across `app/src/core/*` and `app/src/managers/*`
+- Desktop/browser interaction now also exists through `app/src/core/DesktopControls.js`
 - The behavior is still the same AR/volume/mask tool, but the old single-file structure has been replaced with managers around display, screen, model, mask, workers, XR, and interaction
 
 ## 1. What This Repo Is
@@ -18,8 +18,8 @@ The repo is a small workspace that serves a browser-based medical volume viewer 
 
 At runtime it is:
 
-- A single-page app in `docs/index.html`
-- Driven by a central `Experience` object in `docs/src/Experience.js` plus focused managers/controllers
+- A single-page app in `app/index.html`
+- Driven by a central `Experience` object in `app/src/Experience.js` plus focused managers/controllers
 - Rendered with Three.js and WebXR AR
 - Focused on loading NIFTI volumes and masks, showing 3 orthogonal slice planes plus a volumetric mask render, and editing/segmenting masks with XR gestures
 
@@ -29,29 +29,29 @@ Historically it is still labeled "Augmented Reality Tool" in the README and HTML
 
 Top-level:
 
-- `package.json`: root workspace wrapper; delegates local development to the `docs` workspace
+- `package.json`: root Vite wrapper for local development, build, and preview
 - `readme.md`: short setup notes, still using older project naming
-- `docs/`: the actual app
+- `app/`: the actual app source
+- `docs/`: generated build output for deployment
 
 App files:
 
-- `docs/package.json`: local dev server (`serve`) and formatting/lint tooling
-- `docs/index.html`: static shell, hidden file inputs, popup help, import map, module entry point
-- `docs/style.css`: very small amount of page styling
-- `docs/script.js`: tiny bootstrap that starts the app
-- `docs/src/Experience.js`: central shared app/Experience object
-- `docs/src/core/`: scene setup, XR loop, UI wiring, worker handling, utilities, interaction controller
-- `docs/src/managers/`: focused managers for display, volume, mask, screen, model, brush, selector, and container
+- `app/index.html`: static shell, hidden file inputs, popup help, import map, module entry point
+- `app/style.css`: very small amount of page styling
+- `app/script.js`: tiny bootstrap that starts the app
+- `app/src/Experience.js`: central shared app/Experience object
+- `app/src/core/`: scene setup, XR loop, UI wiring, worker handling, utilities, interaction controller
+- `app/src/managers/`: focused managers for display, volume, mask, screen, model, brush, selector, and container
 
 Support files:
 
-- `docs/src/xr/XRGestures.js`: custom XR hand/controller gesture detector
-- `docs/src/workers/segmentation.worker.js`: TensorFlow.js + ONNXRuntime worker for 2D segmentation prompts
-- `docs/src/shaders/screen/*`: slice-plane shader pair
-- `docs/src/shaders/model/*`: 3D mask ray-march shader pair
-- `docs/assets/models/mobilesam*.onnx`: bundled MobileSAM models used by the worker
-- `docs/assets/examples/lung.nii.gz` and `docs/assets/examples/lung_mask.nii.gz`: sample volume/mask assets
-- `docs/src/vendor/pixpipe.esmodule.js`: bundled third-party imaging helper used for NIFTI decoding
+- `app/src/xr/XRGestures.js`: custom XR hand/controller gesture detector
+- `app/src/workers/segmentation.worker.js`: TensorFlow.js + ONNXRuntime worker for 2D segmentation prompts
+- `app/src/shaders/screen/*`: slice-plane shader pair
+- `app/src/shaders/model/*`: 3D mask ray-march shader pair
+- `app/assets/models/mobilesam*.onnx`: bundled MobileSAM models used by the worker
+- `app/assets/examples/*.nii.gz`: sample volume/mask assets
+- `app/src/vendor/pixpipe.esmodule.js`: bundled third-party imaging helper used for NIFTI decoding
 
 ## 3. Runtime Architecture
 
@@ -59,8 +59,8 @@ The app is fundamentally a static site and loads most dependencies directly from
 
 Main startup path now:
 
-1. `docs/script.js` bootstraps `Experience`
-2. `docs/src/Experience.js` loads shaders
+1. `app/script.js` bootstraps `Experience`
+2. `app/src/Experience.js` loads shaders
 3. `SceneManager` creates scene objects, renderer, camera, controls, and scene graph
 4. `UIManager` wires the GUI and file/popup controls
 5. `XRManager` wires reticle, gesture input, AR button, and the animation loop
@@ -335,7 +335,7 @@ Current reality:
 
 ## 7. Gesture Mapping
 
-Gesture detection lives in `docs/src/xr/XRGestures.js`.
+Gesture detection lives in `app/src/xr/XRGestures.js`.
 
 Detected gestures:
 
@@ -349,7 +349,7 @@ Detected gestures:
 - `explode`
 - `implode`
 
-App-level mapping now lives mainly in `docs/src/core/InteractionController.js`:
+App-level mapping now lives mainly in `app/src/core/InteractionController.js`:
 
 - `swipe left/right`: cycle modes
 - `swipe down/up`: undo/redo depending on current mode
@@ -372,7 +372,7 @@ Gesture implementation detail:
 
 Volume/mask input:
 
-- Uploads are wired through hidden file inputs in `docs/index.html`
+- Uploads are wired through hidden file inputs in `app/index.html`
 - `loadNIFTI()` uses PIXPIPE to decode NIFTI into `Image3D`
 - `loadRawNIFTI()` reads the original mask bytes for later re-save
 
@@ -411,7 +411,7 @@ The model shader pair:
 
 ## 10. Segmentation Worker Flow
 
-Worker source: `docs/src/workers/segmentation.worker.js`
+Worker source: `app/src/workers/segmentation.worker.js`
 
 Dependencies loaded inside the worker:
 
@@ -438,7 +438,7 @@ Important current behavior:
 
 ## 11. Important Helper Utilities
 
-Helpers worth remembering now live mainly in `docs/src/core/AppUtils.js`:
+Helpers worth remembering now live mainly in `app/src/core/AppUtils.js`:
 
 - `localPositionToVoxel(...)`: display-local -> voxel index
 - `worldPositionToVoxel(...)`: world -> voxel index

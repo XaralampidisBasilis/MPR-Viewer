@@ -1,7 +1,7 @@
 # MPR Viewer
 
 <p align="center">
-  <img src="docs/ai4hf-logo.svg" alt="AI4HF" width="180">
+  <img src="app/ai4hf-logo.svg" alt="AI4HF" width="180">
 </p>
 
 Browser-based medical volume viewer for loading NIFTI data, exploring orthogonal slice planes, editing masks, prompting 2D segmentation, and placing the volume in AR on supported mobile devices.
@@ -15,7 +15,7 @@ This project combines:
 
 ## Overview
 
-The app is served from the `docs/` folder and runs as a single-page Three.js application. It can be used in two ways:
+The source app now lives in `app/`, and `npm run build` generates the deployable site into `docs/`. It can be used in two ways:
 
 - Desktop/browser mode for everyday inspection, editing, and segmentation with mouse controls
 - WebXR mode on supported phones for AR placement and gesture-based interaction
@@ -33,19 +33,19 @@ Main capabilities:
 
 ### Viewer and volumetric rendering
 
-![MPR viewer rendering](docs/static/mpr_rendering_2.png)
+![MPR viewer rendering](app/static/mpr_rendering_2.png)
 
 ### Mode overview
 
-![Mode overview](docs/static/mpr_mode.jpg)
+![Mode overview](app/static/mpr_mode.jpg)
 
 ### Manual editing workflow
 
-![Mask editing](docs/static/mpr_editing.png)
+![Mask editing](app/static/mpr_editing.png)
 
 ### Prompt-based segmentation
 
-![Segmentation prompts](docs/static/mpr_segmentation.png)
+![Segmentation prompts](app/static/mpr_segmentation.png)
 
 ## Features
 
@@ -93,16 +93,17 @@ The current desktop workflow is the easiest way to inspect and debug the applica
 
 ```text
 .
-|-- docs/
+|-- app/
 |   |-- index.html            # app shell
 |   |-- style.css             # UI styling
 |   |-- script.js             # bootstrap entry
 |   |-- static/               # README screenshots
-|   |-- prm/                  # shaders, worker, models, sample data
+|   |-- assets/               # models and sample data
 |   `-- src/
 |       |-- Experience.js     # central app entry
 |       |-- core/             # XR, UI, interaction, workers, utilities
 |       `-- managers/         # display, screen, model, mask, brush, etc.
+|-- docs/                     # generated build output
 |-- PROJECT_CONTEXT.md        # durable architecture summary
 `-- readme.md
 ```
@@ -146,29 +147,30 @@ http://localhost:3000
 
 The repository includes sample assets for quick testing:
 
-- `docs/prm/lung.nii.gz`
-- `docs/prm/lung_mask.nii.gz`
+- `app/assets/examples/ct_train_1002_image.nii.gz`
+- `app/assets/examples/ct_train_1002_label.nii.gz`
 
 You can load them from the built-in `Examples` controls in the UI.
 
 ## Deploy to GitHub Pages
 
-The app already lives in `docs/`, so the simplest GitHub Pages setup is to publish that folder directly.
+`docs/` is the generated build output, so GitHub Pages can publish that folder directly after you run a build.
 
 Recommended setup:
 
-1. Push the repository to GitHub.
-2. Open `Settings -> Pages`.
-3. Set `Source` to `Deploy from a branch`.
-4. Choose branch `main`.
-5. Choose folder `/docs`.
-6. Save.
+1. Run `npm run build`.
+2. Push the repository to GitHub.
+3. Open `Settings -> Pages`.
+4. Set `Source` to `Deploy from a branch`.
+5. Choose branch `main`.
+6. Choose folder `/docs`.
+7. Save.
 
-That matches the current repository structure and avoids maintaining a separate build output just for deployment.
+That keeps `app/` as the editable source and `docs/` as the published build.
 
 ## Current Architecture
 
-The app was refactored from a single monolithic script into a manager-based structure centered on `docs/src/Experience.js`.
+The app was refactored from a single monolithic script into a manager-based structure centered on `app/src/Experience.js`.
 
 Key runtime modules:
 
