@@ -219,21 +219,39 @@ export class UIManager {
 			)
 			.name("Download");
 
-		const volumeExampleLink = this.getRequiredElement("volumeFile");
-		const maskExampleLink = this.getRequiredElement("maskFile");
-		volumeExampleLink.href = new URL(
-			"../../assets/examples/lung.nii.gz",
+		const volumeExampleUrl = new URL(
+			"../../assets/examples/ct_train_1002_image.nii.gz",
 			import.meta.url,
-		).href;
-		volumeExampleLink.download = "lung.nii.gz";
-		maskExampleLink.href = new URL(
-			"../../assets/examples/lung_mask.nii.gz",
+		);
+		const maskExampleUrl = new URL(
+			"../../assets/examples/ct_train_1002_label.nii.gz",
 			import.meta.url,
-		).href;
-		maskExampleLink.download = "lung_mask.nii.gz";
+		);
 		const examplesFolder = gui.addFolder("Examples");
-		examplesFolder.add(volumeExampleLink, "click").name("Volume");
-		examplesFolder.add(maskExampleLink, "click").name("Mask");
+		examplesFolder
+			.add(
+				{
+					action: () =>
+						this.app.interaction.loadExampleVolume(
+							volumeExampleUrl,
+							"ct_train_1002_image.nii.gz",
+						),
+				},
+				"action",
+			)
+			.name("Volume");
+		examplesFolder
+			.add(
+				{
+					action: () =>
+						this.app.interaction.loadExampleMask(
+							maskExampleUrl,
+							"ct_train_1002_label.nii.gz",
+						),
+				},
+				"action",
+			)
+			.name("Mask");
 
 		this.popupWindow = this.getRequiredElement("popup-window");
 		this.popupBackdrop = this.getRequiredElement("popup-backdrop");

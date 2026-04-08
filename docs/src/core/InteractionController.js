@@ -54,14 +54,11 @@ export class InteractionController {
 		await this.app.uiManager.flushStatusFrame();
 	}
 
-	async onVolumeUpload(event) {
-		const input = event.target;
-		const file = input.files?.[0];
+	async loadVolumeFile(file) {
 		const statusId = "volume-load";
 		const hadMask = Boolean(this.app.mask.userData.image3D);
 
 		if (!file) {
-			input.value = "";
 			return;
 		}
 
@@ -111,19 +108,14 @@ export class InteractionController {
 				this.getErrorMessage(error),
 			);
 			this.reportError("Volume upload", error);
-		} finally {
-			input.value = "";
 		}
 	}
 
-	async onMaskUpload(event) {
-		const input = event.target;
-		const file = input.files?.[0];
+	async loadMaskFile(file) {
 		const statusId = "mask-load";
 		const hadVolume = Boolean(this.app.volume.userData.image3D);
 
 		if (!file) {
-			input.value = "";
 			return;
 		}
 
@@ -172,6 +164,74 @@ export class InteractionController {
 				this.getErrorMessage(error),
 			);
 			this.reportError("Mask upload", error);
+		}
+	}
+
+	async loadExampleVolume(url, fileName) {
+		try {
+			this.app.uiManager?.startStatus(
+				"volume-load",
+				"Loading volume example",
+				`Fetching ${fileName}`,
+			);
+			const file = await this.app.utils.loadBundledFile(url, fileName);
+			await this.loadVolumeFile(file);
+		} catch (error) {
+			this.app.uiManager?.failStatus(
+				"volume-load",
+				"Volume example failed",
+				this.getErrorMessage(error),
+			);
+			this.reportError("Volume example", error);
+		}
+	}
+
+	async loadExampleMask(url, fileName) {
+		try {
+			this.app.uiManager?.startStatus(
+				"mask-load",
+				"Loading mask example",
+				`Fetching ${fileName}`,
+			);
+			const file = await this.app.utils.loadBundledFile(url, fileName);
+			await this.loadMaskFile(file);
+		} catch (error) {
+			this.app.uiManager?.failStatus(
+				"mask-load",
+				"Mask example failed",
+				this.getErrorMessage(error),
+			);
+			this.reportError("Mask example", error);
+		}
+	}
+
+	async onVolumeUpload(event) {
+		const input = event.target;
+		const file = input.files?.[0];
+
+		if (!file) {
+			input.value = "";
+			return;
+		}
+
+		try {
+			await this.loadVolumeFile(file);
+		} finally {
+			input.value = "";
+		}
+	}
+
+	async onMaskUpload(event) {
+		const input = event.target;
+		const file = input.files?.[0];
+
+		if (!file) {
+			input.value = "";
+			return;
+		}
+
+		try {
+			await this.loadMaskFile(file);
 		} finally {
 			input.value = "";
 		}

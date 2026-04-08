@@ -75,6 +75,21 @@ export class AppUtils {
 		});
 	}
 
+	async loadBundledFile(url, fileName) {
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			throw new Error(
+				`Failed to load bundled file: ${fileName} (${response.status})`,
+			);
+		}
+
+		const blob = await response.blob();
+		return new File([blob], fileName, {
+			type: blob.type || "application/octet-stream",
+		});
+	}
+
 	getTypedArrayMax(array) {
 		let maxValue = 0;
 
