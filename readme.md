@@ -33,19 +33,19 @@ Main capabilities:
 
 ### Viewer and volumetric rendering
 
-![MPR viewer rendering](app/static/mpr_rendering_2.png)
+![MPR viewer rendering](app/static/xr/mpr_rendering_2.png)
 
 ### Mode overview
 
-![Mode overview](app/static/mpr_mode.jpg)
+![Mode overview](app/static/xr/mpr_mode.jpg)
 
 ### Manual editing workflow
 
-![Mask editing](app/static/mpr_editing.png)
+![Mask editing](app/static/xr/mpr_editing.png)
 
 ### Prompt-based segmentation
 
-![Segmentation prompts](app/static/mpr_segmentation.png)
+![Segmentation prompts](app/static/xr/mpr_segmentation.png)
 
 ## Features
 
