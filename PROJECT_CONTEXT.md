@@ -1,500 +1,427 @@
 # Project Context
 
-This file is a durable quick-reference for the `MPR-Viewer` repository so future work can start with the project shape, main responsibilities, and the current rough edges already in mind.
+This file is the durable quick-reference for the `MPR-Viewer` repository. It is meant to help future contributors and coding agents re-enter the project quickly without rediscovering the same architecture, assumptions, and rough edges from scratch.
 
-This summary focuses on the project-owned source and on the role of bundled assets. Large third-party or binary files are inventoried here rather than described line by line.
+The source of truth is the code under `app/`. `docs/` is generated output from Vite and should usually be treated as a build artifact, not hand-edited source.
 
-Current architecture note:
+## 1. Repo Snapshot
 
-- `app/script.js` is now a tiny bootstrap file
-- The app entry point is `app/src/Experience.js`
-- Runtime responsibilities are split across `app/src/core/*` and `app/src/managers/*`
-- Desktop/browser interaction now also exists through `app/src/core/DesktopControls.js`
-- The behavior is still the same AR/volume/mask tool, but the old single-file structure has been replaced with managers around display, screen, model, mask, workers, XR, and interaction
+- The project is a browser-based medical volume viewer for NIFTI data.
+- It supports two workflows:
+  - desktop/browser interaction with mouse + keyboard
+  - optional WebXR AR interaction on supported mobile devices
+- The app is built as a single Vite site rooted at `app/`.
+- `npm run build` outputs the deployable site into `docs/`.
+- The runtime centers on a shared `Experience` object composed from manager classes.
+- The main user-facing workflow is `Place -> Inspect -> Edit -> Segment`.
+- Segmentation is currently 2D, prompt-based, and effectively axial-only.
 
-## 1. What This Repo Is
+## 2. Read These Files First
 
-The repo is a small workspace that serves a browser-based medical volume viewer / AR interaction prototype.
+If you only have time to inspect a few files, start here:
 
-At runtime it is:
+- `app/src/Experience.js`: composition root and shared runtime state
+- `app/src/core/InteractionController.js`: high-level behavior for modes, loading, gestures, and desktop/XR actions
+- `app/src/core/DesktopControls.js`: browser mouse, wheel, and keyboard workflow
+- `app/src/managers/DisplayManager.js`: mode-driven visibility and UI state
+- `app/src/managers/ScreenManager.js`: tri-planar slice monitors and slice uniforms
+- `app/src/managers/ModelManager.js`: 3D mask rendering and ROI bounding box
+- `app/src/managers/SegmentationWorkerManager.js`: main-thread slice segmentation orchestration
+- `app/src/workers/segmentation.worker.js`: MobileSAM worker logic
+- `app/index.html`: app shell, help modal, hidden file inputs, overlay root
+- `vite.config.mjs`: confirms `app/` as source root and `docs/` as build output
 
-- A single-page app in `app/index.html`
-- Driven by a central `Experience` object in `app/src/Experience.js` plus focused managers/controllers
-- Rendered with Three.js and WebXR AR
-- Focused on loading NIFTI volumes and masks, showing 3 orthogonal slice planes plus a volumetric mask render, and editing/segmenting masks with XR gestures
+## 3. Repo Layout
 
-Historically it is still labeled "Augmented Reality Tool" in the README and HTML title, even though the repository name is now `mpr-viewer`.
+Top level:
 
-## 2. Repo Layout
+- `package.json`: Vite scripts and runtime dependencies
+- `vite.config.mjs`: Vite root is `app`, build output is `docs`
+- `readme.md`: user-facing setup and workflow overview
+- `PROJECT_CONTEXT.md`: this file
+- `app/`: editable application source
+- `docs/`: generated site output for deployment
 
-Top-level:
+Important app folders:
 
-- `package.json`: root Vite wrapper for local development, build, and preview
-- `readme.md`: short setup notes, still using older project naming
-- `app/`: the actual app source
-- `docs/`: generated build output for deployment
+- `app/index.html`: static shell, help modal, hidden upload inputs, overlay container
+- `app/style.css`: application and help-modal styling
+- `app/script.js`: minimal bootstrap entry
+- `app/src/Experience.js`: central runtime object
+- `app/src/core/`: cross-cutting control and utility code
+- `app/src/managers/`: scene/data/view managers
+- `app/src/xr/`: custom gesture recognizer
+- `app/src/workers/`: segmentation worker
+- `app/src/shaders/`: slice and model GLSL
+- `app/assets/examples/`: sample NIFTI volume + mask
+- `app/assets/models/`: bundled MobileSAM ONNX models
+- `app/src/vendor/pixpipe.esmodule.js`: bundled decoding helper used for `Image3D`
 
-App files:
+## 4. Boot Sequence And Lifecycle
 
-- `app/index.html`: static shell, hidden file inputs, popup help, import map, module entry point
-- `app/style.css`: very small amount of page styling
-- `app/script.js`: tiny bootstrap that starts the app
-- `app/src/Experience.js`: central shared app/Experience object
-- `app/src/core/`: scene setup, XR loop, UI wiring, worker handling, utilities, interaction controller
-- `app/src/managers/`: focused managers for display, volume, mask, screen, model, brush, selector, and container
+Startup flow:
 
-Support files:
+1. `app/script.js` calls `Experience.bootstrap()`.
+2. `Experience` constructs shared scratch objects, utilities, managers, and controllers.
+3. `Experience.init()` loads shader source strings.
+4. `SceneManager.setupObjects()` creates the main Three.js objects and the plain `volume` / `mask` state objects.
+5. `SceneManager.setupScene()` creates the renderer, camera, controls, scene graph, and global DOM event listeners.
+6. `DesktopControls.setup()` enables browser interaction.
+7. `UIManager.setup()` builds the lil-gui controls, help modal wiring, and status HUD.
+8. `XRManager.setup()` creates the reticle, gesture listeners, and AR button.
+9. `SegmentationWorkerManager.setup()` creates and loads the segmentation worker.
+10. The render loop is attached through `renderer.setAnimationLoop(...)`, which delegates to `XRManager.updateAnimation(...)`.
 
-- `app/src/xr/XRGestures.js`: custom XR hand/controller gesture detector
-- `app/src/workers/segmentation.worker.js`: TensorFlow.js + ONNXRuntime worker for 2D segmentation prompts
-- `app/src/shaders/screen/*`: slice-plane shader pair
-- `app/src/shaders/model/*`: 3D mask ray-march shader pair
-- `app/assets/models/mobilesam*.onnx`: bundled MobileSAM models used by the worker
-- `app/assets/examples/*.nii.gz`: sample volume/mask assets
-- `app/src/vendor/pixpipe.esmodule.js`: bundled third-party imaging helper used for NIFTI decoding
+Data reload flow:
 
-## 3. Runtime Architecture
+- Loading a new volume, mask, or example dataset ends by calling `Experience.refreshWorldFromData()`.
+- That method clears prompt points, resets worker slice state, rebuilds `screen`, `model`, `container`, `brush`, and `selector3D`, then rebinds uniforms and refreshes the display/UI state.
 
-The app is fundamentally a static site and loads most dependencies directly from CDNs.
+## 5. Runtime Architecture
 
-Main startup path now:
+### 5.1 Scene graph
 
-1. `app/script.js` bootstraps `Experience`
-2. `app/src/Experience.js` loads shaders
-3. `SceneManager` creates scene objects, renderer, camera, controls, and scene graph
-4. `UIManager` wires the GUI and file/popup controls
-5. `XRManager` wires reticle, gesture input, AR button, and the animation loop
-6. `SegmentationWorkerManager` spins up the MobileSAM worker
-7. Per-frame updates flow through `XRManager.updateAnimation(...)`, then into display/screen/model updates and rendering
-
-Per-frame work:
-
-- If XR is active and reticle placement is enabled, perform hit testing
-- If XR is active, update custom gesture detection
-- If the main `display` object is visible, update scene objects and shader uniforms
-- Render the scene
-
-Important implementation style:
-
-- The app still uses shared mutable Three.js state and `userData`, but it is now grouped behind manager classes
-- `Experience` acts as the shared context, similar to a Bruno Simon-style central app object
-- Most feature areas now have a dedicated manager/controller instead of living in one file
-- Geometry updates, shader uniforms, gestures, and workers are still tightly related, but the responsibilities are now separated enough to debug them independently
-
-## 4. Core Scene Graph And State Objects
-
-The scene graph is built by `SceneManager` plus the world managers and looks like this conceptually:
+The scene graph is intentionally simple:
 
 - `scene`
 - `camera`
 - `display`
+- `reticle`
+- `transformControls`
+
+Children of `display`:
+
 - `screen`
 - `model`
 - `selector3D`
 - `brush`
 - `container`
-- `reticle`
-- `transformControls`
 
-### `display`
+`display` is the spatial parent for the loaded dataset. If something should move with the medical object, it probably belongs under `display`.
 
-`display` is the top-level object representing the loaded volume/mask assembly in space.
+### 5.2 State holders
 
-Responsibilities:
+`volume` and `mask` are plain objects with `userData`, not Three.js meshes.
 
-- Holds the entire medical object in world/AR space
-- Stores mode state in `display.userData.modes`
-- Stores transform undo/redo history
-- Owns visual prompt points used during segmentation
-- Owns global matrices/vectors shared with shaders
+Main state objects:
 
-Important note:
+- `display`: parent transform, mode order, history/future, segmentation prompt points, shared matrices/vectors used by shaders
+- `volume`: source image volume, dimensions, voxel size, physical size, `Data3DTexture`
+- `mask`: editable segmentation volume, history/future, export metadata, `Data3DTexture`
+- `screen`: three slice monitors, world-space planes, axis helpers, center handle, history/future
+- `model`: box mesh with the raymarch shader and a dynamic `userData.box` ROI around non-zero mask voxels
+- `brush`: edit/segment sphere, active plane, projected monitor index, bounding sphere/box
+- `container`: visible box around the dataset plus an `OBB` used for hit testing
+- `selector3D`: interactive 3D box for the unfinished 3D segmentation path
 
-- The active mode is always `display.userData.modes[0]`
-- Swiping rotates this modes array rather than assigning a single enum value
+### 5.3 Managers and controllers
 
-### `volume`
+- `SceneManager`: scene objects, renderer, camera, orbit controls, transform controls, scene graph
+- `DisplayManager`: mode-driven visibility, shared shader matrices, display history/undo/redo
+- `ScreenManager`: slice monitor creation, plane math, monitor intersections, slice uniforms, undo/redo
+- `ModelManager`: 3D mask material, mask ROI box, model uniforms
+- `VolumeManager` / `MaskManager`: volume and mask texture lifecycle
+- `BrushManager`: brush projection onto the active slice
+- `ContainerManager`: visible bounds box and OBB/raycast helpers
+- `Selector3DManager`: 3D selector handles and interactions
+- `SegmentationWorkerManager`: worker lifecycle, encode/decode scheduling, slice prompt state
+- `UIManager`: lil-gui folders, help dialog, transient status cards
+- `XRManager`: AR button, reticle, hit testing, XR animation updates
+- `InteractionController`: the shared behavior layer used by both XR gestures and desktop controls
+- `DesktopControls`: desktop-only input mapping into `InteractionController`
 
-`volume` is a plain object, not a mesh.
+## 6. Data Loading, Export, And Build Notes
 
-Responsibilities:
+Volume and mask loading:
 
-- Stores the loaded scalar image volume
-- Keeps raw data, dimensions, voxel size, physical size, and `Data3DTexture`
-- Feeds slice shaders
+- File uploads are wired through hidden inputs in `app/index.html`.
+- `AppUtils.loadNIFTI()` uses PIXPIPE to decode into an `Image3D`.
+- `AppUtils.loadRawNIFTI()` separately reads the raw NIFTI bytes for later export.
+- Loading only a volume creates a blank mask from that volume.
+- Loading only a mask creates a blank volume from that mask.
+- The example dataset is fetched from bundled assets and wrapped back into `File` objects so it follows the same pipeline.
 
-Important fields:
+Mask export:
 
-- `image3D`
-- `data0`
-- `texture`
-- `samples`
-- `voxelSize`
-- `size`
+- `InteractionController.onMaskDownload()` uses `AppUtils.buildMaskDownloadBuffer(...)`.
+- If raw NIFTI bytes exist, the exporter reuses the original header and rewrites datatype/scaling fields for `UInt8`.
+- If not, the app builds a minimal NIFTI-1 mask file from available metadata.
 
-### `mask`
+Build/deploy notes:
 
-`mask` is also a plain object, parallel to `volume`.
+- Vite serves from `app/` and emits into `docs/`.
+- `base: "./"` means the build is designed to work as a static relative-path site.
+- Do not edit files under `docs/assets/` as if they were source code.
 
-Responsibilities:
+## 7. Rendering Model
 
-- Stores editable segmentation data
-- Keeps its own history/future stacks for undo/redo
-- Feeds slice shaders and the volumetric model shader
+### 7.1 Slice monitors
 
-Editing rule of thumb:
+`ScreenManager` builds three large plane meshes, one per orthogonal axis:
 
-- After changing mask texture data, the code usually also updates screen uniforms, model uniforms, recomputes the model bounding box, updates box uniforms, and marks the texture as dirty
+- monitor `0`: sagittal-style plane
+- monitor `1`: coronal-style plane
+- monitor `2`: axial-style plane
 
-### `container`
+Each monitor uses the custom screen shader and carries uniforms for:
 
-`container` is a visible box around the loaded data.
+- volume texture
+- mask texture
+- plane visibility and alpha
+- global normalization matrix
+- plane normals/origin
+- brush overlay
+- selector overlay
+- axis visibility
+- brightness and contrast
 
-Responsibilities:
+### 7.2 3D model
 
-- Shows the physical extent of the volume
-- Provides an OBB for intersection testing
-- Helps constrain screen-axis calculations and hit testing
+`ModelManager` builds a box mesh sized to the physical mask dimensions and shades it with the model fragment shader.
 
-### `screen`
+Current model behavior:
 
-`screen` is the 3-slice plane system.
+- it raymarches the mask texture
+- it shades the mask surface from local gradients
+- it clips against visible slice planes
+- it limits marching to `model.userData.box`, a tighter ROI around non-zero voxels
 
-Responsibilities:
+Important detail:
 
-- Holds 3 monitors, one per orthogonal plane
-- Tracks plane equations in world space
-- Owns axis helpers and a center marker
-- Has its own history/future stacks for undo/redo
+- `ModelManager.update()` is currently empty; most model changes happen through uniform updates and ROI recomputation rather than per-frame CPU logic
 
-Each monitor:
+## 8. Modes And Interaction Model
 
-- Is a `THREE.Mesh` plane using the slice shader
-- Stores its own local plane
-- Stores visibility/alpha and other per-plane uniforms
-
-### `model`
-
-`model` is the volumetric mask rendering mesh.
-
-Responsibilities:
-
-- Draws a box mesh with a custom shader
-- Ray-marches the mask texture
-- Clips itself against screen planes
-- Uses `model.userData.box` as a dynamic ROI / bounding box around non-zero mask voxels
-
-Important note:
-
-- The function `updateModel()` exists but is empty; the real work is mostly in shader uniforms and bounding-box updates
-
-### `brush`
-
-`brush` is a sphere used in `Edit` and `Segment`.
-
-Responsibilities:
-
-- Projects onto the currently viewed monitor
-- Represents add/subtract mode with color and label semantics
-- Defines a sphere and box used for voxel editing
-
-Brush modes:
-
-- `ADD`: pink, mask value `255`, SAM prompt label `1`
-- `SUB`: cyan, mask value `0`, SAM prompt label `0`
-
-### `selector3D`
-
-`selector3D` is a resizable 3D box with draggable vertices/faces.
-
-Responsibilities:
-
-- Holds OBB, outline, draggable corner handles, and draggable face handles
-- Has its own history/future stacks
-- Is intended for a 3D segmentation workflow
-
-Current status:
-
-- The interaction code exists
-- The actual segmentation logic is placeholder-only
-- The normal mode rotation does not currently include `Segment3D`
-
-### `reticle`
-
-Shown during AR placement before the display is placed.
-
-Responsibilities:
-
-- Receives WebXR hit-test results
-- Provides the pose used to place the display in AR
-
-### `workers`
-
-Workers are created in `setupWorkers()`.
-
-Current implementation:
-
-- Only one worker is created, even though comments imply one per plane
-- The worker handles 2D image embedding + prompted segmentation using MobileSAM
-
-## 5. Coordinate Systems
-
-One of the repo's own TODOs is to simplify coordinate systems, and that matches what the code shows.
-
-There are three important spaces:
-
-- World space: regular Three.js / XR coordinates
-- Display-local space: coordinates centered on the volume object, using physical volume size
-- Display-normalized space: shader-friendly unit-box space, mostly `[-0.5, 0.5]`
-
-Common pattern:
-
-- CPU-side gesture and geometry math often happens in world or display-local space
-- GPU-side sampling happens in normalized space after applying `uNormalize`
-
-This distinction matters a lot when changing interaction code or shader uniforms.
-
-## 6. Modes And UX Model
-
-The app is built around interaction modes. The current default rotation is:
+The active mode is always `display.userData.modes[0]`. The normal cycle is:
 
 - `Place`
 - `Inspect`
 - `Edit`
 - `Segment`
 
-The code also contains `Segment3D`, but it is not included in the default `display.userData.modes` array after setup or session reset.
+`Segment3D` exists in code, but it is not part of the default mode order.
 
 ### `Place`
 
 Purpose:
 
-- Place the display on the AR reticle
-- Move/rotate/scale the whole volume assembly
+- move, rotate, and scale the whole dataset assembly
 
-Visual behavior:
+Visual state:
 
-- Container visible
-- Model visible
-- All monitors visible
+- container visible
+- model visible
+- all slice monitors visible
 
 ### `Inspect`
 
 Purpose:
 
-- Manipulate slice planes
-- Hide/reveal planes
-- Adjust slice orientation and contrast
+- move slice planes
+- rotate the slice stack
+- hide/reveal planes
+- inspect the volume with the model still visible
 
-Visual behavior:
+Visual state:
 
-- Container outlined
-- Model visible with more clipping transparency
-- All monitors visible
+- outlined container
+- model visible
+- all slice monitors visible
 
 ### `Edit`
 
 Purpose:
 
-- Paint directly into the mask using the brush
+- paint directly into the mask on the currently targeted slice
 
-Visual behavior:
+Visual state:
 
-- Model hidden
-- All monitors visible
-- Active monitor emphasized
-- Brush projected onto the selected monitor
+- model hidden
+- all slice monitors visible
+- active monitor emphasized
+- brush projected onto the selected monitor
 
 ### `Segment`
 
 Purpose:
 
-- Use prompt points plus MobileSAM on a single slice
+- place positive/negative prompt points and ask MobileSAM for a slice mask
 
-Visual behavior:
+Visual state:
 
-- Only monitor index `2` is shown
-- Stored prompt points are visible
-- Brush remains active
+- model hidden
+- only monitor index `2` is shown
+- prompt points are visible on the display object
+- brush stays active for prompt placement
 
-Important current limitation:
+Key limitation:
 
-- The worker encoding path is hard-coded to `slice.axis = 2`, so segmentation is effectively axial-only in the current implementation
+- the current main-thread worker flow hard-codes `slice.axis = 2`, so prompt segmentation is effectively tied to the axial plane
 
 ### `Segment3D`
 
 Purpose:
 
-- Intended 3D box-based segmentation workflow
+- intended ROI-driven 3D segmentation workflow
 
 Current reality:
 
-- Box interactions exist
-- `computeSegmentation3D()` is just a placeholder returning a full array of `1`
-- The mode is effectively inactive unless manually added to the modes list
+- selector interactions exist
+- mode-specific hooks still exist in the controller
+- `computeSegmentation3D()` is a placeholder
+- the mode is dormant unless manually reintroduced to the active mode list
 
-## 7. Gesture Mapping
+## 9. Desktop And XR Workflows
 
-Gesture detection lives in `app/src/xr/XRGestures.js`.
+### 9.1 Desktop workflow
 
-Detected gestures:
+The project is now desktop-first for day-to-day use.
 
-- `tap`
-- `polytap`
-- `swipe`
-- `hold`
-- `pan`
-- `pinch`
-- `twist`
-- `explode`
-- `implode`
+Desktop input model:
 
-App-level mapping now lives mainly in `app/src/core/InteractionController.js`:
+- left mouse is reserved for app interactions
+- right drag orbits the camera
+- wheel zooms the camera
+- `1 / 2 / 3 / 4` switch modes
+- `Ctrl/Cmd + Z` and `Ctrl/Cmd + Y` undo/redo in the current mode
+- `G` resets the current mode state
+- `X` toggles add/subtract brush mode in `Edit` and `Segment`
+- `C` clears prompt points in `Segment`
 
-- `swipe left/right`: cycle modes
-- `swipe down/up`: undo/redo depending on current mode
-- `implode`: reset current mode state
-- `explode`: exit AR
-- `double tap` in `Place`: place/hide display
-- `double tap` in `Inspect`: hide/reveal selected plane
-- `double tap` in `Edit` or `Segment`: toggle brush add/subtract
-- `hold`: usually translate something or edit the mask
-- `pan`: rotate display or screen monitor depending on mode
-- `pinch`: resize display, resize brush, or resize selector
-- `twist`: roll display, roll screen, or change contrast depending on mode
+Mode-specific desktop behavior lives in `DesktopControls.js` and forwards into the same underlying interaction methods used by XR.
 
-Gesture implementation detail:
+There is also a developer/debug transform-controls path:
 
-- `XRGestures` tracks controller positions in camera space and computes movement, path distance, turning, angle offsets, pinch distance, and twist angle from that
-- It dispatches semantic gestures only after threshold checks
+- `D` toggles `TransformControls`
+- `Q`, `T`, `R`, `S`, `+`, `-`, `Esc` control transform mode/space/size/reset
 
-## 8. Data Loading And Saving
+This debug path is not the main user workflow, but it exists and can affect the current display state.
 
-Volume/mask input:
+### 9.2 XR workflow
 
-- Uploads are wired through hidden file inputs in `app/index.html`
-- `loadNIFTI()` uses PIXPIPE to decode NIFTI into `Image3D`
-- `loadRawNIFTI()` reads the original mask bytes for later re-save
+XR still exists through `XRManager` and `XRGestures`.
 
-Initialization behavior:
+Important XR pieces:
 
-- Uploading a volume creates an empty mask if one is missing
-- Uploading a mask creates an empty volume if one is missing
-- After either load, the app rebuilds screen/model/container/selector objects and their uniforms
+- `ARButton` starts the session
+- hit testing drives the reticle before placement
+- gestures dispatch semantic events such as `polytap`, `hold`, `pan`, `swipe`, `pinch`, `twist`, `implode`, and `explode`
+- `InteractionController` translates those gestures into mode-specific actions
 
-Mask saving:
+Typical gesture mapping:
 
-- `onMaskDownload()` reuses the raw NIFTI header and swaps the datatype to `UInt8`
-- Texture image data is then written back out as a new `.nii`
+- swipe left/right: cycle modes
+- swipe down/up: undo/redo in the active mode
+- double tap: context action for the current mode
+- hold, pan, pinch, twist: manipulate the active object for that mode
+- implode: reset current mode state
+- explode: exit XR session
 
-## 9. Rendering Model
+## 10. Segmentation Pipeline
 
-### Slice planes
+Main-thread orchestration lives in `SegmentationWorkerManager`.
 
-The slice shader pair:
+Current behavior:
 
-- Samples the volume texture and mask texture
-- Overlays mask color
-- Draws brush overlay, selector overlay, axis lines, and container border
-- Applies brightness/contrast on the slice image
-- Uses per-monitor visibility and alpha
+- exactly one worker is created
+- worker state tracks whether the model is loaded, whether the current slice is encoded, and the prompt state for the active slice
+- entering `Segment` calls `runEncodeAll()`
+- moving the segment slice re-schedules encoding
+- clicking/tapping on the slice adds prompt coordinates and labels, then triggers decode
 
-### Volumetric model
+Worker flow:
 
-The model shader pair:
+1. Load MobileSAM encoder and decoder ONNX models.
+2. Extract the current slice from the volume.
+3. Normalize and resize that slice to `1024 x 1024`.
+4. Compute and cache the image embedding.
+5. Decode prompt points into a mask proposal.
+6. Merge the proposal back into the slice portion of the editable mask.
 
-- Ray-marches the mask texture
-- Computes a surface normal from local texture gradients
-- Shades the mask red based on view-normal alignment
-- Clips against visible screen planes
-- Restricts marching to `model.userData.box`, a tighter ROI around the current mask
+Merge rule:
 
-## 10. Segmentation Worker Flow
+- decoded values are merged with `Math.max(existingSliceValue, segmentValue)`
 
-Worker source: `app/src/workers/segmentation.worker.js`
+Prompt clearing behavior:
 
-Dependencies loaded inside the worker:
+- the worker caches the slice mask values from before prompt-based edits
+- clearing points restores that cached slice region
 
-- TensorFlow.js from CDN
-- ONNX Runtime Web from CDN
-- Local MobileSAM encoder/decoder ONNX files
+Operational caveat:
 
-Flow:
+- `segmentation.worker.js` imports the ONNX models from bundled assets, but `onnxruntime-web` is configured to fetch its WASM runtime from `cdnjs`
+- this means segmentation may fail in offline or restricted-network environments even if the viewer itself loads correctly
 
-1. `setupWorkers()` creates worker(s) and sends a `load` message
-2. Worker loads MobileSAM models
-3. Entering `Segment` triggers `runWorkerEncode()`
-4. The current slice is extracted from the volume
-5. Worker normalizes and resizes the slice, computes image embedding, and caches it
-6. Tapping on the slice adds prompt coordinates + labels
-7. `runWorkerDecode()` sends prompts to the decoder
-8. Decoded mask is merged into the current mask texture
+## 11. Coordinate Systems And Spatial Rules
 
-Important current behavior:
+Three coordinate spaces matter most:
 
-- The merge is `Math.max(originalMaskSliceValue, segmentValue)`
-- Clearing points restores the cached slice texture data from before prompt-based edits
-- Re-encoding also happens after moving the slice monitor in `Segment`
+- world space: regular Three.js / XR coordinates
+- display-local space: physical coordinates centered on the dataset
+- normalized shader space: the unit-box style space used after `uNormalize`
 
-## 11. Important Helper Utilities
+Rule of thumb:
 
-Helpers worth remembering now live mainly in `app/src/core/AppUtils.js`:
+- CPU interaction math usually happens in world space or display-local physical space
+- GPU sampling and clipping logic happen in normalized shader space
 
-- `localPositionToVoxel(...)`: display-local -> voxel index
-- `worldPositionToVoxel(...)`: world -> voxel index
-- `voxelToWorldPosition(...)`: voxel index -> world
-- `projectBoxOnPlane(...)`: projects a box onto a plane, used by brush editing
-- `getSlice(...)`: extracts a 2D slice and its linear indices
-- `bufferAction(...)`: delayed retry loop used for worker readiness
-- `positionToAxis(...)`: determines a rotation axis for screen monitor rotation based on hit position
+Important spatial constraints:
 
-## 12. Known Unfinished Or Risky Areas
+- slice movement is clamped so planes stay inside the volume bounds
+- brush projection depends on ray intersection with visible slice monitors
+- mask editing ultimately resolves to voxel indices through `localPositionToVoxel(...)`
 
-These are useful to remember before making changes:
+## 12. Practical Invariants For Future Edits
 
-- `Segment3D` is not part of the active mode cycle, despite UI/update code for it
-- `computeSegmentation3D()` is a stub
-- `updateModel()` is empty
-- `onLeavingSegmentMode()` is empty
-- `computeMinimalBox2()` is empty
-- `transformArray()` references `size` without defining it locally
-- `onGestureRotateObjectOnWorldPivot()` appears inconsistent and likely unused/broken
-- Comments in worker setup say "one worker for each plane", but the current code creates exactly one worker
-- The segmentation worker is effectively hard-coded to plane index / axis `2`
-- The app relies on a lot of implicit update ordering; missing a follow-up uniform update can easily cause stale visuals
+When loading or rebuilding dataset state:
 
-One smaller correctness concern:
+- update the relevant `volume` / `mask` object
+- call `refreshWorldFromData()`
 
-- `updateMaskTexture(array, min, max)` compares `array.length !== mask.userData.texture.image.data`, which looks like a bug because the right side is the array object, not its length
+When changing mask texture contents:
 
-## 13. Practical Reminders For Future Edits
+- write into `mask.userData.texture.image.data`
+- set `mask.userData.texture.needsUpdate = true`
+- refresh screen and model mask uniforms
+- recompute `model.userData.box` when the edited region can shrink or expand the non-zero mask bounds
+- refresh model box uniforms after recomputing the ROI
 
-When changing mask data:
+When changing slice transform or plane visibility:
 
-- Update texture contents
-- Mark `mask.userData.texture.needsUpdate = true`
-- Refresh screen/model mask uniforms
-- Recompute the model bounding box if the edited region can change it
-
-When changing screen transforms or plane visibility:
-
-- Update the screen object
-- Refresh screen plane uniforms
-- Refresh model plane uniforms
+- update the `screen` object
+- call `screenManager.update()`
+- refresh screen plane uniforms
+- refresh model plane uniforms
 
 When changing mode behavior:
 
-- Check `updateUI()`
-- Check gesture routing (`onPolytap`, `onSwipe`, `onHold`, `onPan`, `onPinch`, `onTwist`, `onImplode`, `onExplode`)
-- Check history/reset behavior for that mode
+- inspect `DisplayManager.updateUI()`
+- inspect `InteractionController.setMode(...)`
+- inspect `DesktopControls.js`
+- inspect the mode GUI wiring in `UIManager.js`
+- inspect help text in `app/index.html` if user-facing controls changed
 
 When changing segmentation:
 
-- Review both the main-thread slice bookkeeping and the worker-side preprocessing/decoding
-- Be careful about prompt coordinate normalization and slice-axis assumptions
+- inspect both `SegmentationWorkerManager.js` and `segmentation.worker.js`
+- check prompt coordinate normalization and slice-axis assumptions
+- remember that the current Segment mode only exposes monitor `2`
+
+## 13. Known Rough Edges
+
+These are the current gaps or likely footguns:
+
+- `Segment3D` is present in code but not part of the active mode cycle
+- `computeSegmentation3D()` is still a placeholder
+- `InteractionController.onLeavingSegmentMode()` is empty
+- `ModelManager.update()` is empty
+- `AppUtils.computeMinimalBox2()` is still a placeholder
+- segmentation is effectively limited to the axial slice path
+- uniform updates are still manually chained in many places, so missing one follow-up call can leave stale visuals
+- the app still mixes scene objects, mutable `userData`, and shared scratch objects heavily; debugging often depends on understanding update order rather than isolated pure functions
 
 ## 14. Short Mental Model
 
-If you only remember one thing, remember this:
+If you only keep one summary in your head, use this one:
 
-The app is a modular Three.js/WebXR medical viewer where `display` is the parent world object, `screen` is the tri-planar slice system, `mask` is the editable segmentation volume, `model` is a shader-based 3D rendering of that mask, `brush` is the 2D editing/segment prompt tool, and `worker.js` runs a MobileSAM-based slice segmentation pipeline that currently works in a limited, mostly axial 2D workflow.
+The app is a Vite-hosted Three.js medical viewer where `display` is the parent world object, `screen` is the tri-planar slice system, `mask` is the editable segmentation volume, `model` is the raymarched 3D view of that mask, `brush` is the edit/prompt tool projected onto the current slice, `DesktopControls` and XR gestures both feed the same `InteractionController`, and the current segmentation workflow is a single-worker MobileSAM pipeline that operates on the axial slice only.
